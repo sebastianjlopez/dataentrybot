@@ -5,7 +5,7 @@ Handles credit checks and debt verification.
 import logging
 from typing import Dict, Any, Optional
 import aiohttp
-from app.config import settings
+from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

@@ -4,9 +4,9 @@ Handles cheque detection, extraction, and BCRA validation.
 """
 import logging
 from typing import Dict, Any, Optional
-from app.models import ChequeData
-from app.gemini_client import GeminiClient
-from app.bcra_client import BCRAClient
+from src.app.core.models import ChequeData
+from src.app.services.gemini_client import GeminiClient
+from src.app.services.bcra_client import BCRAClient
 import re
 
 logger = logging.getLogger(__name__)

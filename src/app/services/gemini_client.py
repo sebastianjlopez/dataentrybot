@@ -3,10 +3,9 @@ Client for Google Gemini Vision API.
 Handles image/document processing and data extraction.
 """
 import google.generativeai as genai
-from typing import Optional, Dict, Any, BinaryIO
-import base64
+from typing import Optional, Dict, Any
 import logging
-from app.config import settings
+from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

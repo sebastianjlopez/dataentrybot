@@ -1,11 +1,10 @@
 """
 File utility functions for handling uploads and file operations.
 """
-import os
 import logging
-from typing import Optional, Tuple
+from typing import Optional
 from pathlib import Path
-from app.config import settings
+from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

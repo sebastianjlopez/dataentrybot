@@ -1,61 +1,213 @@
-# Data Entry Bot 🤖
+# 🤖 Data Entry Bot
 
-Sistema de automatización de Data Entry accesible mediante un bot de Telegram con Mini App, que utiliza Gemini Vision para procesar documentos y cheques, y valida información crediticia mediante la API del BCRA.
+<div align="center">
 
-## 🚀 Características
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green.svg)
+![Telegram](https://img.shields.io/badge/Telegram-Bot-blue.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-- **Bot de Telegram** con Mini App integrada
-- **Procesamiento OCR** con Google Gemini Vision
-- **Lectura especializada de cheques** con extracción de campos estructurados
-- **Validación BCRA** para verificar situación crediticia
-- **Interfaz web** para revisar y editar datos extraídos
-- **API REST** con FastAPI
-- **Docker** para despliegue fácil
+**Sistema profesional de automatización de Data Entry con Telegram Bot, Gemini Vision y validación BCRA**
 
-## 📋 Stack Tecnológico
+[Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [Documentación](#-documentación) • [Contribuir](#-contribuir)
 
-- **Backend**: Python 3.11+, FastAPI, uvicorn
-- **Bot**: python-telegram-bot
-- **OCR/Vision**: Google Gemini API
-- **Validación**: API BCRA (con modo mock)
-- **Frontend**: HTML + JavaScript vanilla
-- **Infraestructura**: Docker, docker-compose
+</div>
 
-## 🏗️ Estructura del Proyecto
+---
+
+## 📋 Tabla de Contenidos
+
+- [Descripción](#-descripción)
+- [Características](#-características)
+- [Stack Tecnológico](#-stack-tecnológico)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Uso](#-uso)
+- [API Endpoints](#-api-endpoints)
+- [Arquitectura](#-arquitectura)
+- [Desarrollo](#-desarrollo)
+- [Despliegue](#-despliegue)
+- [Troubleshooting](#-troubleshooting)
+- [Contribuir](#-contribuir)
+- [Licencia](#-licencia)
+
+---
+
+## 🎯 Descripción
+
+**Data Entry Bot** es un sistema completo de automatización de data entry diseñado para roles administrativos. Permite procesar documentos, leer cheques mediante OCR con Gemini Vision, validar información crediticia con la API del BCRA, y gestionar todo el flujo a través de un bot de Telegram con Mini App integrada.
+
+### Casos de Uso
+
+- ✅ Procesamiento automatizado de cheques
+- ✅ Extracción de datos de documentos (fotos, PDFs)
+- ✅ Validación crediticia en tiempo real
+- ✅ Interfaz web para revisión y edición de datos
+- ✅ Flujo completo de aprobación y procesamiento
+
+---
+
+## ✨ Características
+
+### 🤖 Bot de Telegram
+- Interfaz conversacional intuitiva
+- Soporte para comandos `/start` y `/help`
+- Procesamiento automático de imágenes y PDFs
+- Integración con Mini App para edición de datos
+
+### 🔍 Procesamiento OCR
+- **Gemini Vision API** para extracción de texto
+- Detección automática de cheques
+- Extracción estructurada de campos específicos
+- Soporte para múltiples formatos (JPG, PNG, PDF)
+
+### 💰 Procesamiento de Cheques
+- Extracción de datos clave:
+  - CUIT del librador
+  - Banco emisor
+  - Fechas de emisión y pago
+  - Importe y número de cheque
+  - CBU/CUIT del beneficiario
+- Validación automática con BCRA
+- Normalización de formatos
+
+### 🏦 Validación BCRA
+- Consulta de situación crediticia
+- Verificación de cheques rechazados
+- Evaluación de riesgo crediticio
+- Modo mock para desarrollo
+
+### 📱 Mini App (WebApp)
+- Interfaz web responsive
+- Edición de datos extraídos
+- Validación de formularios
+- Vista diferenciada para cheques
+- Integración con Telegram WebApp API
+
+### 🚀 API REST
+- Endpoints RESTful con FastAPI
+- Documentación automática (Swagger/OpenAPI)
+- Manejo de errores robusto
+- Health checks para monitoreo
+
+---
+
+## 🛠️ Stack Tecnológico
+
+### Backend
+- **Python 3.11+** - Lenguaje principal
+- **FastAPI** - Framework web moderno y rápido
+- **Uvicorn** - Servidor ASGI de alto rendimiento
+- **Pydantic** - Validación de datos y configuración
+- **python-telegram-bot** - Biblioteca para Telegram Bot API
+
+### Servicios Externos
+- **Google Gemini Vision API** - Procesamiento de imágenes y OCR
+- **BCRA API** - Validación crediticia (con modo mock)
+
+### Frontend
+- **HTML5 + CSS3** - Estructura y estilos
+- **JavaScript Vanilla** - Lógica del cliente
+- **Telegram WebApp API** - Integración con Telegram
+
+### Infraestructura
+- **Docker** - Containerización
+- **Docker Compose** - Orquestación de servicios
+- **Python-dotenv** - Gestión de variables de entorno
+
+---
+
+## 📁 Estructura del Proyecto
 
 ```
 dataentrybot/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI application
-│   ├── routes.py            # API endpoints
-│   ├── bot.py                # Telegram bot
-│   ├── config.py             # Configuration
-│   ├── models.py             # Pydantic models
-│   ├── gemini_client.py      # Gemini API client
-│   ├── bcra_client.py        # BCRA API client
-│   ├── cheques_processor.py  # Cheque processing logic
-│   └── utils/
-│       └── file.py           # File utilities
-├── webapp/
-│   ├── index.html            # Mini App HTML
-│   └── script.js             # Mini App JavaScript
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-└── .env.example
+├── src/
+│   └── app/
+│       ├── __init__.py
+│       ├── main.py                 # FastAPI application entry point
+│       ├── api/                     # API routes
+│       │   ├── __init__.py
+│       │   └── routes.py            # API endpoints
+│       ├── bot/                     # Telegram Bot
+│       │   ├── __init__.py
+│       │   └── bot.py               # Bot implementation
+│       ├── core/                    # Core modules
+│       │   ├── __init__.py
+│       │   ├── config.py            # Configuration management
+│       │   └── models.py            # Pydantic models
+│       ├── services/                # External services
+│       │   ├── __init__.py
+│       │   ├── gemini_client.py    # Gemini API client
+│       │   ├── bcra_client.py      # BCRA API client
+│       │   └── cheques_processor.py # Cheque processing logic
+│       └── utils/                   # Utilities
+│           ├── __init__.py
+│           └── file.py             # File handling utilities
+├── webapp/                          # Mini App (Frontend)
+│   ├── index.html                   # Main HTML
+│   └── script.js                    # JavaScript logic
+├── docker/                          # Docker configuration
+│   ├── Dockerfile                   # Docker image definition
+│   └── docker-compose.yml           # Docker Compose config
+├── scripts/                         # Utility scripts
+│   └── run_bot.py                   # Bot runner script
+├── uploads/                         # Uploaded files (gitignored)
+├── .env.example                     # Environment variables template
+├── .dockerignore                    # Docker ignore file
+├── .gitignore                       # Git ignore file
+├── requirements.txt                 # Python dependencies
+└── README.md                        # This file
 ```
 
-## 🔧 Instalación
+---
+
+## 🚀 Instalación
 
 ### Prerrequisitos
 
-- Python 3.11+
-- Docker y Docker Compose (opcional)
-- Token de bot de Telegram
-- API Key de Google Gemini
+- **Python 3.11 o superior**
+- **Docker y Docker Compose** (opcional, para despliegue con Docker)
+- **Token de Bot de Telegram** ([Cómo obtenerlo](https://core.telegram.org/bots/tutorial#obtain-your-bot-token))
+- **API Key de Google Gemini** ([Obtener aquí](https://makersuite.google.com/app/apikey))
 
-### Configuración
+### Opción 1: Instalación Local
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/sebastianjlopez/dataentrybot.git
+   cd dataentrybot
+   ```
+
+2. **Crear entorno virtual**
+   ```bash
+   python -m venv venv
+   
+   # Windows
+   venv\Scripts\activate
+   
+   # Linux/Mac
+   source venv/bin/activate
+   ```
+
+3. **Instalar dependencias**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configurar variables de entorno**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Editar `.env` con tus credenciales:
+   ```env
+   TELEGRAM_BOT_TOKEN=tu_token_aqui
+   GEMINI_API_KEY=tu_api_key_aqui
+   TELEGRAM_WEBAPP_URL=http://localhost:8000/webapp
+   ```
+
+### Opción 2: Instalación con Docker
 
 1. **Clonar el repositorio**
    ```bash
@@ -66,49 +218,124 @@ dataentrybot/
 2. **Configurar variables de entorno**
    ```bash
    cp .env.example .env
+   # Editar .env con tus credenciales
    ```
-   
-   Editar `.env` y configurar:
-   - `TELEGRAM_BOT_TOKEN`: Token de tu bot de Telegram
-   - `GEMINI_API_KEY`: API Key de Google Gemini
-   - `TELEGRAM_WEBAPP_URL`: URL de la Mini App (ej: `https://tu-dominio.com/webapp`)
 
-3. **Instalar dependencias**
+3. **Construir y ejecutar con Docker Compose**
    ```bash
-   pip install -r requirements.txt
+   docker-compose -f docker/docker-compose.yml up -d
    ```
 
-### Ejecución con Docker
+---
 
+## ⚙️ Configuración
+
+### Variables de Entorno
+
+| Variable | Descripción | Requerido | Default |
+|----------|-------------|-----------|---------|
+| `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | ✅ | - |
+| `GEMINI_API_KEY` | API Key de Google Gemini | ✅ | - |
+| `TELEGRAM_WEBAPP_URL` | URL de la Mini App | ✅ | `http://localhost:8000/webapp` |
+| `API_HOST` | Host del servidor API | ❌ | `0.0.0.0` |
+| `API_PORT` | Puerto del servidor API | ❌ | `8000` |
+| `API_BASE_URL` | URL base de la API | ❌ | `http://localhost:8000` |
+| `BCRA_API_URL` | URL de la API BCRA | ❌ | `https://api.bcra.gov.ar` |
+| `BCRA_API_KEY` | API Key de BCRA | ❌ | - |
+| `BCRA_MOCK_MODE` | Usar modo mock de BCRA | ❌ | `true` |
+| `LOG_LEVEL` | Nivel de logging | ❌ | `INFO` |
+
+### Configurar Bot de Telegram
+
+1. Habla con [@BotFather](https://t.me/botfather) en Telegram
+2. Crea un nuevo bot con `/newbot`
+3. Copia el token proporcionado
+4. Configura la Mini App URL en BotFather:
+   ```
+   /newapp
+   [Selecciona tu bot]
+   [Nombre de la app]
+   [URL: https://tu-dominio.com/webapp]
+   ```
+
+---
+
+## 📖 Uso
+
+### Iniciar la API
+
+**Local:**
 ```bash
-docker-compose up -d
+uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Ejecución local
+**Docker:**
+```bash
+docker-compose -f docker/docker-compose.yml up
+```
 
-1. **Iniciar la API**
-   ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
+La API estará disponible en `http://localhost:8000`
+- Documentación Swagger: `http://localhost:8000/docs`
+- Documentación ReDoc: `http://localhost:8000/redoc`
 
-2. **Iniciar el bot** (en otra terminal)
-   ```bash
-   python -m app.bot
-   ```
+### Iniciar el Bot
 
-## 📡 Endpoints API
+**Local:**
+```bash
+python scripts/run_bot.py
+```
+
+**O directamente:**
+```bash
+python -m src.app.bot.bot
+```
+
+### Uso del Bot
+
+1. **Iniciar conversación**
+   - Busca tu bot en Telegram
+   - Envía `/start` para comenzar
+
+2. **Subir un documento**
+   - Envía una foto o PDF al bot
+   - El bot procesará automáticamente el documento
+
+3. **Procesar un cheque**
+   - Si el documento es un cheque, el bot:
+     - Extraerá todos los campos relevantes
+     - Validará con BCRA
+     - Mostrará un resumen
+
+4. **Revisar y editar**
+   - Haz clic en "📝 Revisar y Editar"
+   - Se abrirá la Mini App
+   - Edita los datos si es necesario
+   - Confirma para procesar
+
+---
+
+## 🔌 API Endpoints
 
 ### `POST /api/upload`
-Sube y procesa un archivo (imagen, PDF, cheque).
+Sube y procesa un archivo.
 
-**Request**: `multipart/form-data` con campo `file`
+**Request:**
+```bash
+curl -X POST "http://localhost:8000/api/upload" \
+  -F "file=@cheque.jpg"
+```
 
-**Response**:
+**Response:**
 ```json
 {
   "success": true,
   "tipo_documento": "cheque",
-  "data": { ... },
+  "data": {
+    "cuit_librador": "20-12345678-9",
+    "banco": "Banco Nación",
+    "importe": 50000.0,
+    ...
+  },
   "filename": "cheque.jpg"
 }
 ```
@@ -116,7 +343,7 @@ Sube y procesa un archivo (imagen, PDF, cheque).
 ### `POST /api/process`
 Procesa datos validados desde la Mini App.
 
-**Request**:
+**Request:**
 ```json
 {
   "tipo_documento": "cheque",
@@ -128,71 +355,163 @@ Procesa datos validados desde la Mini App.
 ### `GET /api/health`
 Health check del servicio.
 
-## 🤖 Uso del Bot
-
-1. Iniciar conversación: `/start`
-2. Enviar una foto o PDF
-3. El bot procesará el documento automáticamente
-4. Si es un cheque, validará con BCRA
-5. Revisar y editar datos en la Mini App
-6. Confirmar para procesar
-
-## 📝 Modelo de Datos - Cheque
-
+**Response:**
 ```json
 {
-  "tipo_documento": "cheque",
-  "cuit_librador": "20-12345678-9",
-  "banco": "Banco Nación",
-  "fecha_emision": "2024-01-15",
-  "fecha_pago": "2024-01-30",
-  "importe": 50000.0,
-  "numero_cheque": "12345678",
-  "cbu_beneficiario": "1234567890123456789012",
-  "estado_bcra": "Sin deuda",
-  "cheques_rechazados": 0,
-  "riesgo_crediticio": "A"
+  "status": "healthy",
+  "service": "data-entry-bot-api",
+  "version": "1.0.0"
 }
 ```
 
-## 🔐 Validación BCRA
+---
 
-El sistema valida automáticamente la situación crediticia del librador del cheque:
-- Estado crediticio (Sin deuda / Deuda moderada / Deuda alta)
-- Cantidad de cheques rechazados
-- Nivel de riesgo crediticio (A, B, C)
+## 🏗️ Arquitectura
 
-**Nota**: Actualmente funciona en modo mock. Para producción, configurar `BCRA_MOCK_MODE=false` y proporcionar `BCRA_API_KEY`.
+### Flujo de Procesamiento de Cheques
 
-## 🛠️ Desarrollo
+```
+Usuario envía foto
+    ↓
+Bot recibe archivo
+    ↓
+API /upload procesa
+    ↓
+Detección de cheque
+    ↓
+Gemini Vision extrae datos
+    ↓
+BCRA valida CUIT
+    ↓
+Bot muestra resumen
+    ↓
+Usuario abre Mini App
+    ↓
+Edición y validación
+    ↓
+API /process guarda datos
+```
+
+### Componentes Principales
+
+- **`TelegramBot`**: Maneja interacciones con usuarios
+- **`GeminiClient`**: Procesa imágenes con Gemini Vision
+- **`BCRAClient`**: Valida información crediticia
+- **`ChequesProcessor`**: Orquesta el procesamiento de cheques
+- **`FastAPI Routes`**: Endpoints REST para procesamiento
+
+---
+
+## 💻 Desarrollo
 
 ### Estructura de Módulos
 
-- **`app/main.py`**: Aplicación FastAPI principal
-- **`app/routes.py`**: Definición de endpoints
-- **`app/bot.py`**: Lógica del bot de Telegram
-- **`app/gemini_client.py`**: Cliente para Gemini Vision API
-- **`app/bcra_client.py`**: Cliente para BCRA API
-- **`app/cheques_processor.py`**: Procesamiento especializado de cheques
-- **`app/models.py`**: Modelos Pydantic para validación
+- **`src/app/core/`**: Configuración y modelos base
+- **`src/app/api/`**: Endpoints de la API
+- **`src/app/bot/`**: Lógica del bot de Telegram
+- **`src/app/services/`**: Clientes de servicios externos
+- **`src/app/utils/`**: Utilidades compartidas
 
 ### Agregar Nuevos Tipos de Documentos
 
-1. Crear modelo en `app/models.py`
-2. Agregar lógica de procesamiento
-3. Actualizar `app/routes.py` para manejar el nuevo tipo
+1. Crear modelo en `src/app/core/models.py`
+2. Agregar procesador en `src/app/services/`
+3. Actualizar `src/app/api/routes.py`
 4. Actualizar Mini App si es necesario
+
+### Ejecutar Tests
+
+```bash
+# Próximamente
+pytest
+```
+
+---
+
+## 🚢 Despliegue
+
+### Despliegue con Docker
+
+```bash
+# Construir imagen
+docker build -f docker/Dockerfile -t dataentrybot:latest .
+
+# Ejecutar contenedor
+docker run -d \
+  --name dataentrybot \
+  -p 8000:8000 \
+  --env-file .env \
+  dataentrybot:latest
+```
+
+### Despliegue en Producción
+
+1. **Configurar dominio y SSL**
+2. **Actualizar `TELEGRAM_WEBAPP_URL`** con la URL de producción
+3. **Configurar `BCRA_MOCK_MODE=false`** si usas API real
+4. **Configurar logging** apropiado
+5. **Usar un servidor WSGI/ASGI** como Gunicorn con Uvicorn workers
+
+---
+
+## 🔧 Troubleshooting
+
+### El bot no responde
+- Verifica que el token de Telegram sea correcto
+- Asegúrate de que el bot esté corriendo
+- Revisa los logs para errores
+
+### Error al procesar imágenes
+- Verifica que la API Key de Gemini sea válida
+- Revisa que la imagen sea válida y no esté corrupta
+- Verifica los límites de la API de Gemini
+
+### La Mini App no carga
+- Verifica que `TELEGRAM_WEBAPP_URL` sea correcta
+- Asegúrate de que la API esté accesible públicamente
+- Revisa la configuración de CORS
+
+---
+
+## 🤝 Contribuir
+
+Las contribuciones son bienvenidas. Por favor:
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+---
 
 ## 📄 Licencia
 
 Este proyecto es una demo profesional para roles administrativos y automatización de data entry.
 
+---
+
 ## 👤 Autor
 
-Sebastián López
+**Sebastián López**
 
-## 🔗 Enlaces
+- GitHub: [@sebastianjlopez](https://github.com/sebastianjlopez)
+- Repositorio: [dataentrybot](https://github.com/sebastianjlopez/dataentrybot)
 
-- [Repositorio GitHub](https://github.com/sebastianjlopez/dataentrybot)
-- [Documentación FastAPI](http://localhost:8000/docs) (cuando el servidor está corriendo)
+---
 
+## 🔗 Enlaces Útiles
+
+- [Documentación FastAPI](https://fastapi.tiangolo.com/)
+- [Documentación python-telegram-bot](https://python-telegram-bot.org/)
+- [Google Gemini API](https://ai.google.dev/)
+- [Telegram Bot API](https://core.telegram.org/bots/api)
+- [BCRA API](https://www.bcra.gob.ar/)
+
+---
+
+<div align="center">
+
+**⭐ Si este proyecto te resultó útil, considera darle una estrella ⭐**
+
+</div>

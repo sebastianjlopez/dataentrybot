@@ -4,10 +4,9 @@ Main FastAPI application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 import logging
-from app.config import settings
-from app.routes import router
+from src.app.core.config import settings
+from src.app.api.routes import router
 from pathlib import Path
 
 # Configure logging

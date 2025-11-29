@@ -7,7 +7,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 import aiohttp
 import json
-from app.config import settings
+from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 

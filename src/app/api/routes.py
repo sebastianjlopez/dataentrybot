@@ -3,13 +3,11 @@ FastAPI routes for the Data Entry Bot API.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
-from typing import Optional
 import logging
-from app.models import ChequeData, DocumentData, ProcessRequest, ProcessResponse
-from app.cheques_processor import ChequesProcessor
-from app.gemini_client import GeminiClient
-from app.utils.file import save_uploaded_file, get_file_mime_type, is_image_file, is_pdf_file
-import json
+from src.app.core.models import ChequeData, DocumentData, ProcessRequest, ProcessResponse
+from src.app.services.cheques_processor import ChequesProcessor
+from src.app.services.gemini_client import GeminiClient
+from src.app.utils.file import save_uploaded_file, get_file_mime_type
 
 logger = logging.getLogger(__name__)
 
