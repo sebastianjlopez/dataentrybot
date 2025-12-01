@@ -76,11 +76,36 @@ class GeminiClient:
             
             extraction_prompt = prompt or default_prompt
             
-            # Prepare image part
+            # Prepare image part - handle both images and PDFs
             import PIL.Image
             import io
             
-            image = PIL.Image.open(io.BytesIO(image_data))
+            # Check if it's a PDF
+            if mime_type == "application/pdf":
+                # Convert PDF to image (all pages)
+                from pdf2image import convert_from_bytes
+                from PIL import Image
+                logger.info("Converting PDF to image (all pages)...")
+                images = convert_from_bytes(image_data, first_page=1, last_page=10)
+                if images:
+                    if len(images) == 1:
+                        image = images[0]
+                        logger.info(f"PDF converted to image: {image.size}")
+                    else:
+                        # Combine multiple pages
+                        total_height = sum(img.height for img in images)
+                        max_width = max(img.width for img in images)
+                        image = Image.new('RGB', (max_width, total_height), color='white')
+                        y_offset = 0
+                        for img in images:
+                            image.paste(img, (0, y_offset))
+                            y_offset += img.height
+                        logger.info(f"PDF converted to combined image ({len(images)} pages): {image.size}")
+                else:
+                    raise ValueError("Could not convert PDF to image")
+            else:
+                # It's a regular image
+                image = PIL.Image.open(io.BytesIO(image_data))
             
             # Generate content with reasoning
             # Gemini 2.5 supports better structured outputs
@@ -131,51 +156,74 @@ class GeminiClient:
         Returns:
             Dictionary with structured cheque data
         """
+        # Handle PDF conversion if needed
+        if mime_type == "application/pdf":
+            from pdf2image import convert_from_bytes
+            logger.info("Converting PDF to image (processing all pages for multiple cheques)...")
+            # Convert all pages (up to 10 pages max to avoid memory issues)
+            images = convert_from_bytes(image_data, first_page=1, last_page=10)
+            if images:
+                # Combine all pages into a single image (vertically stacked)
+                # This allows Gemini to see all cheques at once
+                from PIL import Image
+                import io
+                
+                if len(images) == 1:
+                    # Single page, use it directly
+                    img_byte_arr = io.BytesIO()
+                    images[0].save(img_byte_arr, format='PNG')
+                    image_data = img_byte_arr.getvalue()
+                    logger.info("PDF converted to PNG image (1 page)")
+                else:
+                    # Multiple pages, combine them
+                    total_height = sum(img.height for img in images)
+                    max_width = max(img.width for img in images)
+                    combined = Image.new('RGB', (max_width, total_height), color='white')
+                    
+                    y_offset = 0
+                    for img in images:
+                        combined.paste(img, (0, y_offset))
+                        y_offset += img.height
+                    
+                    img_byte_arr = io.BytesIO()
+                    combined.save(img_byte_arr, format='PNG')
+                    image_data = img_byte_arr.getvalue()
+                    logger.info(f"PDF converted to PNG image ({len(images)} pages combined)")
+                
+                mime_type = "image/png"
+            else:
+                raise ValueError("Could not convert PDF to image")
+        
         cheque_prompt = """
-        Eres un experto en análisis de cheques argentinos usando Gemini 2.5. 
-        Analiza esta imagen de un cheque y razona sobre su estructura para extraer la información con precisión.
+Analiza esta imagen de cheques argentinos y extrae TODOS los cheques encontrados.
 
-        PROCESO DE RAZONAMIENTO (usando capacidades avanzadas de Gemini 2.5):
-        1. ANÁLISIS ESTRUCTURAL:
-           - Identifica las secciones del cheque: encabezado (banco, logo), datos del librador, 
-             datos del beneficiario, montos (números y letras), fechas, número de cheque
-           - Usa tu capacidad de razonamiento para entender el contexto visual
-        
-        2. EXTRACCIÓN INTELIGENTE:
-           Para cada campo, razona:
-           - ¿Dónde debería estar este dato según la estructura estándar de cheques argentinos?
-           - ¿Qué formato tiene? (ej: CUIT puede estar con o sin guiones: 20-12345678-9 o 20123456789)
-           - ¿Hay información que valide este dato? (ej: importe en números vs letras)
-           - Si hay texto parcialmente oculto o borroso, razona sobre qué debería decir
-        
-        3. VALIDACIÓN Y CONSISTENCIA:
-           - El importe en números debe coincidir con el de letras (valida ambos)
-           - Las fechas deben ser lógicas (fecha_pago >= fecha_emision)
-           - El CUIT debe tener formato válido (11 dígitos, normaliza a XX-XXXXXXXX-X)
-           - El banco debe ser reconocible (puede estar en logo o texto)
-        
-        4. MANEJO DE AMBIGÜEDADES:
-           - Si un campo no está claro, razona sobre dónde debería estar
-           - Si hay múltiples posibilidades, elige la más probable basándote en el contexto
-           - Si no encuentras un campo, indica por qué (borroso, no visible, etc.)
-        
-        Extrae la siguiente información en formato JSON estricto (responde SOLO con el JSON):
-        {
-            "cuit_librador": "CUIT del librador normalizado a formato XX-XXXXXXXX-X",
-            "banco": "Nombre completo del banco emisor",
-            "fecha_emision": "Fecha de emisión en formato YYYY-MM-DD",
-            "fecha_pago": "Fecha de pago/vencimiento en formato YYYY-MM-DD",
-            "importe": número decimal (extrae del campo numérico, valida con letras si es posible),
-            "numero_cheque": "Número único del cheque",
-            "cbu_beneficiario": "CBU o CUIT del beneficiario si aparece, sino null o cadena vacía",
-            "razonamiento": "Breve explicación de tu análisis, validaciones realizadas y observaciones importantes"
-        }
-        
-        REGLAS ESTRICTAS:
-        - Responde ÚNICAMENTE con el JSON válido, sin texto adicional, sin markdown, sin explicaciones fuera del JSON
-        - Si un campo no se puede determinar, usa "" para strings o 0 para números
-        - El campo "razonamiento" debe ser breve (máximo 200 caracteres)
-        - Normaliza todos los formatos (CUIT siempre con guiones, fechas siempre YYYY-MM-DD)
+RESPONDE ÚNICAMENTE CON ESTE JSON (sin texto adicional, sin markdown, sin explicaciones):
+
+{
+  "cheques": [
+    {
+      "cuit_librador": "30-69163759-6",
+      "banco": "BANCO CREDICOOP",
+      "fecha_emision": "2025-03-14",
+      "fecha_pago": "2025-03-31",
+      "importe": 1000000.00,
+      "numero_cheque": "59503890",
+      "cbu_beneficiario": null
+    }
+  ]
+}
+
+INSTRUCCIONES:
+- Si hay múltiples cheques, agrega más objetos al array "cheques"
+- cuit_librador: formato XX-XXXXXXXX-X (normaliza si viene sin guiones)
+- banco: nombre completo del banco
+- fecha_emision: formato YYYY-MM-DD (convierte "14 de marzo de 2025" a "2025-03-14")
+- fecha_pago: formato YYYY-MM-DD
+- importe: número decimal (ej: 1000000.00, 516099.40)
+- numero_cheque: string con el número
+- cbu_beneficiario: string o null
+
+IMPORTANTE: Responde SOLO con el JSON, nada más.
         """
         
         result = await self.process_image(image_data, mime_type, cheque_prompt)
@@ -186,13 +234,13 @@ class GeminiClient:
         
         try:
             # Improved JSON extraction - handles nested objects and arrays
-            text = result.get("extracted_text", "")
+            text = result.get("extracted_text", "").strip()
             
             # Try to find JSON block (may be wrapped in markdown code blocks)
             json_patterns = [
                 r'```json\s*(\{.*?\})\s*```',  # JSON in markdown code block
                 r'```\s*(\{.*?\})\s*```',       # JSON in code block
-                r'(\{.*\})',                    # Any JSON object
+                r'(\{.*\})',                    # Any JSON object (supports nested with DOTALL)
             ]
             
             cheque_data = {}
@@ -200,19 +248,48 @@ class GeminiClient:
                 json_match = re.search(pattern, text, re.DOTALL)
                 if json_match:
                     try:
-                        cheque_data = json.loads(json_match.group(1))
+                        json_str = json_match.group(1)
+                        parsed = json.loads(json_str)
+                        
+                        # Normalize structure: always use "cheques" array format
+                        if "cheques" in parsed and isinstance(parsed["cheques"], list):
+                            # Already in correct format
+                            cheque_data = parsed
+                        elif isinstance(parsed, list):
+                            # Array at root level, wrap it
+                            cheque_data = {"cheques": parsed}
+                        elif isinstance(parsed, dict):
+                            # Single cheque object, wrap in array
+                            cheque_data = {"cheques": [parsed]}
+                        else:
+                            logger.warning(f"Unexpected JSON structure: {type(parsed)}")
+                            cheque_data = {"cheques": []}
                         break
-                    except json.JSONDecodeError:
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"JSON decode error with pattern {pattern}: {e}")
                         continue
             
             # If no JSON found, try to extract key-value pairs manually
-            if not cheque_data:
-                logger.warning("Could not find JSON in response, attempting manual extraction")
+            if not cheque_data or "cheques" not in cheque_data:
+                logger.warning("Could not find valid JSON with 'cheques' array, attempting manual extraction")
+                logger.debug(f"Response text (first 500 chars): {text[:500]}")
                 # Fallback: try to extract individual fields using regex
-                cheque_data = self._extract_fields_fallback(text)
+                fallback_data = self._extract_fields_fallback(text)
+                if fallback_data:
+                    cheque_data = {"cheques": [fallback_data]}
+                else:
+                    cheque_data = {"cheques": []}
+            
+            # Ensure we always have the "cheques" array
+            if "cheques" not in cheque_data:
+                if cheque_data:
+                    cheque_data = {"cheques": [cheque_data]}
+                else:
+                    cheque_data = {"cheques": []}
             
             result["cheque_data"] = cheque_data
-            logger.info(f"Successfully extracted cheque data: {list(cheque_data.keys())}")
+            cheque_count = len(cheque_data.get("cheques", []))
+            logger.info(f"Successfully extracted {cheque_count} cheque(s) from document")
             
         except json.JSONDecodeError as e:
             logger.warning(f"Could not parse JSON from Gemini response: {e}")

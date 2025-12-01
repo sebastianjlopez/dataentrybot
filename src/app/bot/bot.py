@@ -3,10 +3,9 @@ Telegram Bot implementation using python-telegram-bot.
 Handles user interactions and integrates with the FastAPI backend.
 """
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 import aiohttp
-import json
 from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -30,9 +29,9 @@ class TelegramBot:
 
 Este bot te ayuda a:
 • Subir y procesar documentos (fotos, PDFs)
-• Leer cheques con OCR
+• Leer cheques con inteligencia artificial
 • Validar información crediticia (BCRA)
-• Editar y confirmar datos en la Mini App
+• Mostrar resultados estructurados
 
 *Comandos disponibles:*
 /start - Mostrar este mensaje
@@ -40,9 +39,8 @@ Este bot te ayuda a:
 
 *¿Cómo usar?*
 1. Envía una foto o PDF
-2. El bot procesará el documento
-3. Revisa y edita los datos en la Mini App
-4. Confirma para procesar
+2. El bot procesará el documento automáticamente
+3. Recibirás los resultados extraídos en formato comanda
 
 ¡Envía un documento para comenzar!
         """
@@ -59,18 +57,19 @@ Este bot te ayuda a:
 
 *Procesamiento de Documentos:*
 • Envía cualquier imagen o PDF
-• El bot detectará automáticamente si es un cheque
+• El bot detectará automáticamente si contiene cheques
 • Los cheques se procesan con validación BCRA
 
 *Procesamiento de Cheques:*
-• Extrae: CUIT, Banco, Fechas, Importe, Número
-• Valida situación crediticia del librador
+• Extrae automáticamente: CUIT, Banco, Fechas, Importe, Número
+• Valida situación crediticia del librador con BCRA
 • Muestra cheques rechazados y riesgo crediticio
+• Si hay múltiples cheques, muestra uno por uno
 
-*Mini App:*
-• Abre la Mini App para revisar y editar datos
-• Todos los campos son editables
-• Confirma cuando estés listo
+*Resultados:*
+• Los resultados se muestran en formato comanda estructurado
+• Cada cheque se muestra con todos sus datos extraídos
+• No se requiere confirmación ni edición
 
 *Soporte:*
 Para más información, contacta al administrador.
@@ -122,10 +121,35 @@ Para más información, contacta al administrador.
                             tipo = result.get("tipo_documento", "documento")
                             data = result.get("data", {})
                             
-                            if tipo == "cheque":
-                                await self._handle_cheque_result(message, data)
+                            if tipo == "cheques" or (tipo == "cheque" and isinstance(data, list)):
+                                # Multiple cheques or single cheque in list format
+                                cheques_list = data if isinstance(data, list) else [data]
+                                cantidad = result.get("cantidad", len(cheques_list))
+                                
+                                # Send summary message first
+                                await message.reply_text(
+                                    f"✅ *Se encontraron {cantidad} cheque(s) en el documento*",
+                                    parse_mode='Markdown'
+                                )
+                                
+                                # Send formatted messages for each cheque (tipo comanda)
+                                for idx, cheque_data in enumerate(cheques_list, 1):
+                                    await self._send_cheque_comanda(
+                                        message, 
+                                        cheque_data, 
+                                        numero=idx, 
+                                        total=cantidad
+                                    )
+                            elif tipo == "cheque":
+                                # Single cheque (old format)
+                                await self._send_cheque_comanda(message, data)
                             else:
-                                await self._handle_document_result(message, data, result)
+                                # General document - just show extracted content
+                                contenido = data.get("contenido", "")[:1000]
+                                await message.reply_text(
+                                    f"✅ *Documento procesado*\n\n`{contenido[:800]}...`",
+                                    parse_mode='Markdown'
+                                )
                         else:
                             await message.reply_text("❌ Error al procesar el documento. Intenta nuevamente.")
                     else:
@@ -136,77 +160,79 @@ Para más información, contacta al administrador.
             logger.error(f"Error handling document: {str(e)}")
             await update.message.reply_text("❌ Ocurrió un error. Por favor intenta nuevamente.")
     
-    async def _handle_cheque_result(self, message, cheque_data: dict):
-        """Handle cheque processing result."""
+    async def _send_cheque_comanda(self, message, cheque_data: dict, numero: int = 1, total: int = 1):
+        """
+        Send cheque data in comanda format (structured, readable format).
+        No editing options, just display the extracted data.
+        """
         cuit = cheque_data.get("cuit_librador", "N/A")
         banco = cheque_data.get("banco", "N/A")
         importe = cheque_data.get("importe", 0)
         estado_bcra = cheque_data.get("estado_bcra", "N/A")
         cheques_rechazados = cheque_data.get("cheques_rechazados", 0)
         riesgo = cheque_data.get("riesgo_crediticio", "N/A")
+        numero_cheque = cheque_data.get("numero_cheque", "N/A")
+        fecha_emision = cheque_data.get("fecha_emision", "N/A")
+        fecha_pago = cheque_data.get("fecha_pago", "N/A")
+        cbu_beneficiario = cheque_data.get("cbu_beneficiario") or "N/A"
         
-        # Build summary message
-        summary = f"""
-✅ *Cheque procesado correctamente*
+        # Format as comanda (structured receipt-like format)
+        # Use plain text to avoid Markdown parsing errors
+        header = f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" \
+                 f"📋 CHEQUE {numero}/{total}\n" \
+                 f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        
+        comanda = f"""
+{header}
 
-*Datos extraídos:*
-• CUIT Librador: `{cuit}`
-• Banco: {banco}
-• Importe: ${importe:,.2f}
-• Número: {cheque_data.get("numero_cheque", "N/A")}
-• Fecha Emisión: {cheque_data.get("fecha_emision", "N/A")}
-• Fecha Pago: {cheque_data.get("fecha_pago", "N/A")}
+🏦 BANCO: {banco}
+🔢 NÚMERO: {numero_cheque}
+💰 IMPORTE: ${importe:,.2f}
 
-*Validación BCRA:*
-• Estado: {estado_bcra}
-• Cheques Rechazados: {cheques_rechazados}
-• Riesgo Crediticio: {riesgo}
+👤 LIBRADOR:
+   CUIT: {cuit}
 
-¿Querés revisar y editar los datos?
+📅 FECHAS:
+   Emisión: {fecha_emision}
+   Vencimiento: {fecha_pago}
+
+🏦 VALIDACIÓN BCRA:
+   Estado: {estado_bcra}
+   Rechazados: {cheques_rechazados}
+   Riesgo: {riesgo}
+
+💳 BENEFICIARIO:
+   CBU/CUIT: {cbu_beneficiario}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         """
         
-        # Create Mini App button
-        keyboard = [
-            [InlineKeyboardButton(
-                "📝 Revisar y Editar",
-                web_app=WebAppInfo(url=f"{self.webapp_url}?data={json.dumps(cheque_data)}")
-            )]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
+        # Always use plain text to avoid Markdown parsing errors
         await message.reply_text(
-            summary,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
+            comanda,
+            parse_mode=None
         )
     
-    async def _handle_document_result(self, message, document_data: dict, result: dict):
-        """Handle general document processing result."""
-        contenido = document_data.get("contenido", "")[:500]  # First 500 chars
-        
-        summary = f"""
-✅ *Documento procesado*
-
-*Contenido extraído:*
-{contenido}...
-
-¿Querés revisar y editar los datos?
+    def _format_cheque_from_json(self, cheque_json: dict) -> dict:
         """
+        Format cheque data from Gemini JSON response.
+        Extracts and normalizes all fields.
         
-        # Create Mini App button
-        keyboard = [
-            [InlineKeyboardButton(
-                "📝 Revisar y Editar",
-                web_app=WebAppInfo(url=f"{self.webapp_url}?data={json.dumps(document_data)}")
-            )]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await message.reply_text(
-            summary,
-            parse_mode='Markdown',
-            reply_markup=reply_markup
-        )
+        Args:
+            cheque_json: Raw cheque data from Gemini
+            
+        Returns:
+            Formatted cheque data dictionary
+        """
+        return {
+            "cuit_librador": cheque_json.get("cuit_librador", ""),
+            "banco": cheque_json.get("banco", ""),
+            "fecha_emision": cheque_json.get("fecha_emision", ""),
+            "fecha_pago": cheque_json.get("fecha_pago", ""),
+            "importe": cheque_json.get("importe", 0),
+            "numero_cheque": cheque_json.get("numero_cheque", ""),
+            "cbu_beneficiario": cheque_json.get("cbu_beneficiario") or None
+        }
     
     def setup_handlers(self):
         """Setup bot command and message handlers."""

@@ -153,7 +153,6 @@ dataentrybot/
 │   └── docker-compose.yml           # Docker Compose config
 ├── scripts/                         # Utility scripts
 │   └── run_bot.py                   # Bot runner script
-├── uploads/                         # Uploaded files (gitignored)
 ├── .env.example                     # Environment variables template
 ├── .dockerignore                    # Docker ignore file
 ├── .gitignore                       # Git ignore file
@@ -446,7 +445,31 @@ docker run -d \
   dataentrybot:latest
 ```
 
-### Despliegue en Producción
+### Despliegue en Render (o servicios cloud similares)
+
+El proyecto está optimizado para servicios cloud como Render:
+
+✅ **Procesamiento en memoria**: Los archivos se procesan directamente en memoria, no se guardan en disco
+✅ **Sin dependencias de sistema de archivos**: Compatible con sistemas de archivos efímeros
+✅ **Configuración simple**: Solo necesitas las variables de entorno
+
+**Pasos para Render:**
+
+1. **Crear un nuevo Web Service** en Render
+2. **Conectar tu repositorio de GitHub**
+3. **Configurar variables de entorno**:
+   - `TELEGRAM_BOT_TOKEN`
+   - `GEMINI_API_KEY`
+   - `GEMINI_MODEL` (opcional, default: `gemini-2.5-flash`)
+   - `TELEGRAM_WEBAPP_URL` (URL de tu servicio en Render)
+   - `BCRA_MOCK_MODE=true` (o `false` si tienes API key real)
+4. **Build Command**: `pip install -r requirements.txt`
+5. **Start Command**: `uvicorn src.app.main:app --host 0.0.0.0 --port $PORT`
+6. **Actualizar `TELEGRAM_WEBAPP_URL`** con la URL de producción de Render
+
+**Nota**: Render asigna un puerto dinámico en `$PORT`, pero Uvicorn ya está configurado para usar `0.0.0.0`.
+
+### Despliegue en Producción (VPS/Dedicated)
 
 1. **Configurar dominio y SSL**
 2. **Actualizar `TELEGRAM_WEBAPP_URL`** con la URL de producción

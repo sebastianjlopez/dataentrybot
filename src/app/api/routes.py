@@ -7,7 +7,7 @@ import logging
 from src.app.core.models import ChequeData, DocumentData, ProcessRequest, ProcessResponse
 from src.app.services.cheques_processor import ChequesProcessor
 from src.app.services.gemini_client import GeminiClient
-from src.app.utils.file import save_uploaded_file, get_file_mime_type
+from src.app.utils.file import get_file_mime_type
 
 logger = logging.getLogger(__name__)
 
@@ -34,21 +34,21 @@ async def upload_file(file: UploadFile = File(...)):
         
         logger.info(f"Processing upload: {filename} ({mime_type})")
         
-        # Save file temporarily
-        saved_path = save_uploaded_file(file_data, filename)
+        # Process file directly from memory (no need to save to disk)
+        # This works better in cloud environments like Render where filesystem is ephemeral
         
-        # Detect if it's a cheque
-        is_cheque = cheques_processor.is_cheque(file_data, filename)
+        # Always try to detect cheques first (Gemini will determine if there are any)
+        logger.info("Attempting to detect cheques in document...")
+        cheques_list = await cheques_processor.detect_and_process_cheques(file_data, mime_type, filename)
         
-        if is_cheque:
-            # Process as cheque
-            logger.info("Processing as cheque...")
-            cheque_data = await cheques_processor.process_cheque(file_data, mime_type)
-            
+        if cheques_list and len(cheques_list) > 0:
+            # Found cheques - return them
+            logger.info(f"Found {len(cheques_list)} cheque(s)")
             return {
                 "success": True,
-                "tipo_documento": "cheque",
-                "data": cheque_data.model_dump(),
+                "tipo_documento": "cheques",
+                "cantidad": len(cheques_list),
+                "data": [cheque.model_dump() for cheque in cheques_list],
                 "filename": filename
             }
         else:

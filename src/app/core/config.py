@@ -22,6 +22,15 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_base_url: str = "http://localhost:8000"
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Auto-detect Docker environment and use service name
+        import os
+        if os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER"):
+            # We're in Docker, use service name for API
+            if self.api_base_url == "http://localhost:8000":
+                self.api_base_url = "http://api:8000"
+    
     # BCRA API Configuration
     bcra_api_url: str = "https://api.bcra.gov.ar"
     bcra_api_key: Optional[str] = None
