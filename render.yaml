@@ -25,8 +25,6 @@ services:
           type: web
           name: dataentrybot-api
           property: host
-      - key: BCRA_MOCK_MODE
-        value: "false"
       - key: LOG_LEVEL
         value: INFO
 
@@ -49,8 +47,6 @@ services:
           type: web
           name: dataentrybot-api
           property: host
-      - key: BCRA_MOCK_MODE
-        value: "false"
       - key: LOG_LEVEL
         value: INFO
 

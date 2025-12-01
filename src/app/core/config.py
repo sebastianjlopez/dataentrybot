@@ -30,10 +30,8 @@ class Settings(BaseSettings):
             if self.api_base_url == "http://localhost:8000":
                 self.api_base_url = "http://api:8000"
     
-    # BCRA API Configuration
-    bcra_api_url: str = "https://api.bcra.gov.ar"
-    bcra_api_key: Optional[str] = None
-    bcra_mock_mode: bool = True
+    # BCRA API Configuration - Always uses official API
+    # No configuration needed - API is public
     
     # Logging
     log_level: str = "INFO"
