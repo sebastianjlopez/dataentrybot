@@ -26,7 +26,7 @@ services:
           name: dataentrybot-api
           property: host
       - key: BCRA_MOCK_MODE
-        value: "true"
+        value: "false"
       - key: LOG_LEVEL
         value: INFO
 
@@ -50,7 +50,7 @@ services:
           name: dataentrybot-api
           property: host
       - key: BCRA_MOCK_MODE
-        value: "true"
+        value: "false"
       - key: LOG_LEVEL
         value: INFO
 
