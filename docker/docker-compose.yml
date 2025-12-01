@@ -10,8 +10,7 @@ services:
       - ../.env
     volumes:
       - ../src:/app/src
-      - ../webapp:/app/webapp
-      # uploads directory not needed - files are processed in memory
+      # Files are processed in memory, no need for uploads directory
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
@@ -30,7 +29,6 @@ services:
     environment:
       # Override API_BASE_URL to use Docker service name (must be after env_file)
       - API_BASE_URL=http://api:8000
-      # Also override TELEGRAM_WEBAPP_URL for production (keep localhost for now)
     volumes:
       - ../src:/app/src
       - ../scripts:/app/scripts

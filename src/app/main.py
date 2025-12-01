@@ -3,11 +3,9 @@ Main FastAPI application entry point.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 import logging
 from src.app.core.config import settings
 from src.app.api.routes import router
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(
@@ -24,7 +22,7 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS middleware for Mini App
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, specify allowed origins
@@ -35,12 +33,6 @@ app.add_middleware(
 
 # Include routers
 app.include_router(router, prefix="/api", tags=["api"])
-
-# Mount static files for webapp
-webapp_path = Path("webapp")
-if webapp_path.exists():
-    app.mount("/webapp", StaticFiles(directory="webapp"), name="webapp")
-    logger.info("Webapp static files mounted")
 
 
 @app.get("/")

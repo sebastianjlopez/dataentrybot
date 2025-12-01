@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     
     # Telegram Bot Configuration
     telegram_bot_token: str
-    telegram_webapp_url: str = "http://localhost:8000/webapp"
     
     # Gemini API Configuration
     gemini_api_key: str

@@ -17,7 +17,6 @@ class TelegramBot:
     def __init__(self):
         """Initialize Telegram bot."""
         self.token = settings.telegram_bot_token
-        self.webapp_url = settings.telegram_webapp_url
         self.api_url = f"{settings.api_base_url}/api"
         self.application = None
         logger.info("Telegram bot initialized")

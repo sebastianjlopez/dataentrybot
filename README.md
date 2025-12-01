@@ -36,15 +36,15 @@
 
 ## 🎯 Descripción
 
-**Data Entry Bot** es un sistema completo de automatización de data entry diseñado para roles administrativos. Permite procesar documentos, leer cheques mediante razonamiento avanzado con Gemini 2.5 LLM, validar información crediticia con la API del BCRA, y gestionar todo el flujo a través de un bot de Telegram con Mini App integrada.
+**Data Entry Bot** es un sistema completo de automatización de data entry diseñado para roles administrativos. Permite procesar documentos, leer cheques mediante razonamiento avanzado con Gemini 2.5 LLM, validar información crediticia con la API del BCRA, y gestionar todo el flujo a través de un bot de Telegram.
 
 ### Casos de Uso
 
 - ✅ Procesamiento automatizado de cheques
 - ✅ Extracción de datos de documentos (fotos, PDFs)
 - ✅ Validación crediticia en tiempo real
-- ✅ Interfaz web para revisión y edición de datos
-- ✅ Flujo completo de aprobación y procesamiento
+- ✅ Detección y procesamiento de múltiples cheques en un solo documento
+- ✅ Formato comanda estructurado para visualización de resultados
 
 ---
 
@@ -54,7 +54,8 @@
 - Interfaz conversacional intuitiva
 - Soporte para comandos `/start` y `/help`
 - Procesamiento automático de imágenes y PDFs
-- Integración con Mini App para edición de datos
+- Formato comanda estructurado para mostrar resultados
+- Detección automática de múltiples cheques en un documento
 
 ### 🔍 Procesamiento Inteligente con LLM
 - **Gemini 2.5 LLM** (Flash/Pro) con capacidades de razonamiento avanzado
@@ -79,13 +80,6 @@
 - Evaluación de riesgo crediticio
 - Modo mock para desarrollo
 
-### 📱 Mini App (WebApp)
-- Interfaz web responsive
-- Edición de datos extraídos
-- Validación de formularios
-- Vista diferenciada para cheques
-- Integración con Telegram WebApp API
-
 ### 🚀 API REST
 - Endpoints RESTful con FastAPI
 - Documentación automática (Swagger/OpenAPI)
@@ -106,11 +100,6 @@
 ### Servicios Externos
 - **Google Gemini 2.5 LLM** - Procesamiento inteligente de imágenes con razonamiento avanzado (Flash/Pro)
 - **BCRA API** - Validación crediticia (con modo mock)
-
-### Frontend
-- **HTML5 + CSS3** - Estructura y estilos
-- **JavaScript Vanilla** - Lógica del cliente
-- **Telegram WebApp API** - Integración con Telegram
 
 ### Infraestructura
 - **Docker** - Containerización
@@ -145,9 +134,6 @@ dataentrybot/
 │       └── utils/                   # Utilities
 │           ├── __init__.py
 │           └── file.py             # File handling utilities
-├── webapp/                          # Mini App (Frontend)
-│   ├── index.html                   # Main HTML
-│   └── script.js                    # JavaScript logic
 ├── docker/                          # Docker configuration
 │   ├── Dockerfile                   # Docker image definition
 │   └── docker-compose.yml           # Docker Compose config
@@ -204,7 +190,7 @@ dataentrybot/
    ```env
    TELEGRAM_BOT_TOKEN=tu_token_aqui
    GEMINI_API_KEY=tu_api_key_aqui
-   TELEGRAM_WEBAPP_URL=http://localhost:8000/webapp
+   GEMINI_MODEL=gemini-2.5-flash
    ```
 
 ### Opción 2: Instalación con Docker
@@ -237,7 +223,6 @@ dataentrybot/
 | `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | ✅ | - |
 | `GEMINI_API_KEY` | API Key de Google Gemini | ✅ | - |
 | `GEMINI_MODEL` | Modelo de Gemini a usar (gemini-2.5-flash o gemini-2.5-pro) | ❌ | `gemini-2.5-flash` |
-| `TELEGRAM_WEBAPP_URL` | URL de la Mini App | ✅ | `http://localhost:8000/webapp` |
 | `API_HOST` | Host del servidor API | ❌ | `0.0.0.0` |
 | `API_PORT` | Puerto del servidor API | ❌ | `8000` |
 | `API_BASE_URL` | URL base de la API | ❌ | `http://localhost:8000` |
@@ -251,13 +236,7 @@ dataentrybot/
 1. Habla con [@BotFather](https://t.me/botfather) en Telegram
 2. Crea un nuevo bot con `/newbot`
 3. Copia el token proporcionado
-4. Configura la Mini App URL en BotFather:
-   ```
-   /newapp
-   [Selecciona tu bot]
-   [Nombre de la app]
-   [URL: https://tu-dominio.com/webapp]
-   ```
+4. El bot está listo para usar - no requiere configuración adicional
 
 ---
 
@@ -305,13 +284,8 @@ python -m src.app.bot.bot
    - Si el documento es un cheque, el bot:
      - Extraerá todos los campos relevantes
      - Validará con BCRA
-     - Mostrará un resumen
-
-4. **Revisar y editar**
-   - Haz clic en "📝 Revisar y Editar"
-   - Se abrirá la Mini App
-   - Edita los datos si es necesario
-   - Confirma para procesar
+     - Mostrará un resumen en formato comanda
+   - Si hay múltiples cheques, se mostrarán uno por uno
 
 ---
 
@@ -341,18 +315,6 @@ curl -X POST "http://localhost:8000/api/upload" \
 }
 ```
 
-### `POST /api/process`
-Procesa datos validados desde la Mini App.
-
-**Request:**
-```json
-{
-  "tipo_documento": "cheque",
-  "datos": { ... },
-  "usuario_id": "123456789"
-}
-```
-
 ### `GET /api/health`
 Health check del servicio.
 
@@ -372,25 +334,21 @@ Health check del servicio.
 ### Flujo de Procesamiento de Cheques
 
 ```
-Usuario envía foto
+Usuario envía foto/PDF
     ↓
 Bot recibe archivo
     ↓
 API /upload procesa
     ↓
-Detección de cheque
+Detección automática de cheques
     ↓
 Gemini 2.5 LLM analiza y extrae datos con razonamiento
     ↓
-BCRA valida CUIT
+BCRA valida CUIT (si está disponible)
     ↓
-Bot muestra resumen
+Bot muestra resultados en formato comanda
     ↓
-Usuario abre Mini App
-    ↓
-Edición y validación
-    ↓
-API /process guarda datos
+Múltiples cheques se muestran individualmente
 ```
 
 ### Componentes Principales
@@ -418,7 +376,7 @@ API /process guarda datos
 1. Crear modelo en `src/app/core/models.py`
 2. Agregar procesador en `src/app/services/`
 3. Actualizar `src/app/api/routes.py`
-4. Actualizar Mini App si es necesario
+4. Actualizar `src/app/bot/bot.py` para manejar el nuevo tipo
 
 ### Ejecutar Tests
 
@@ -445,37 +403,75 @@ docker run -d \
   dataentrybot:latest
 ```
 
-### Despliegue en Render (o servicios cloud similares)
+### Despliegue en Render
 
 El proyecto está optimizado para servicios cloud como Render:
 
 ✅ **Procesamiento en memoria**: Los archivos se procesan directamente en memoria, no se guardan en disco
 ✅ **Sin dependencias de sistema de archivos**: Compatible con sistemas de archivos efímeros
 ✅ **Configuración simple**: Solo necesitas las variables de entorno
+✅ **Archivo render.yaml incluido**: Configuración lista para usar
 
-**Pasos para Render:**
+**Opción 1: Usando render.yaml (Recomendado)**
+
+1. **Conectar tu repositorio de GitHub** a Render
+2. **Crear un nuevo Blueprint** en Render
+3. **Seleccionar el archivo `render.yaml`** del repositorio
+4. **Configurar variables de entorno** en Render Dashboard:
+   - `TELEGRAM_BOT_TOKEN` (requerido)
+   - `GEMINI_API_KEY` (requerido)
+   - `GEMINI_MODEL` (opcional, default: `gemini-2.5-flash`)
+   - `BCRA_MOCK_MODE=true` (o `false` si tienes API key real)
+5. **Render creará automáticamente**:
+   - Un Web Service para la API
+   - Un Background Worker para el Bot
+
+**Opción 2: Configuración Manual**
+
+**Para el API Service (Web Service):**
 
 1. **Crear un nuevo Web Service** en Render
 2. **Conectar tu repositorio de GitHub**
-3. **Configurar variables de entorno**:
+3. **Configurar**:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn src.app.main:app --host 0.0.0.0 --port $PORT`
+4. **Variables de entorno**:
    - `TELEGRAM_BOT_TOKEN`
    - `GEMINI_API_KEY`
-   - `GEMINI_MODEL` (opcional, default: `gemini-2.5-flash`)
-   - `TELEGRAM_WEBAPP_URL` (URL de tu servicio en Render)
-   - `BCRA_MOCK_MODE=true` (o `false` si tienes API key real)
-4. **Build Command**: `pip install -r requirements.txt`
-5. **Start Command**: `uvicorn src.app.main:app --host 0.0.0.0 --port $PORT`
-6. **Actualizar `TELEGRAM_WEBAPP_URL`** con la URL de producción de Render
+   - `GEMINI_MODEL` (opcional)
+   - `BCRA_MOCK_MODE=true`
+   - `LOG_LEVEL=INFO`
 
-**Nota**: Render asigna un puerto dinámico en `$PORT`, pero Uvicorn ya está configurado para usar `0.0.0.0`.
+**Para el Bot Service (Background Worker):**
+
+1. **Crear un nuevo Background Worker** en Render
+2. **Conectar el mismo repositorio de GitHub**
+3. **Configurar**:
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python -m src.app.bot`
+4. **Variables de entorno**:
+   - `TELEGRAM_BOT_TOKEN` (mismo que el API)
+   - `GEMINI_API_KEY` (mismo que el API)
+   - `GEMINI_MODEL` (opcional)
+   - `API_BASE_URL` (URL del API Service de Render, ej: `https://dataentrybot-api.onrender.com`)
+   - `BCRA_MOCK_MODE=true`
+   - `LOG_LEVEL=INFO`
+
+**Notas importantes:**
+
+- Render asigna un puerto dinámico en `$PORT` para Web Services
+- El API Service debe estar disponible públicamente para que el Bot pueda conectarse
+- Usa la URL completa del API Service (con `https://`) en `API_BASE_URL` del Bot
+- Los archivos se procesan en memoria, no se requiere almacenamiento persistente
 
 ### Despliegue en Producción (VPS/Dedicated)
 
 1. **Configurar dominio y SSL**
-2. **Actualizar `TELEGRAM_WEBAPP_URL`** con la URL de producción
+2. **Configurar `API_BASE_URL`** con la URL de producción (con HTTPS)
 3. **Configurar `BCRA_MOCK_MODE=false`** si usas API real
 4. **Configurar logging** apropiado
 5. **Usar un servidor WSGI/ASGI** como Gunicorn con Uvicorn workers
+6. **Usar Docker Compose** para facilitar el despliegue (ver `docker/docker-compose.yml`)
 
 ---
 
@@ -491,10 +487,10 @@ El proyecto está optimizado para servicios cloud como Render:
 - Revisa que la imagen sea válida y no esté corrupta
 - Verifica los límites de la API de Gemini
 
-### La Mini App no carga
-- Verifica que `TELEGRAM_WEBAPP_URL` sea correcta
+### El bot no se conecta a la API
+- Verifica que `API_BASE_URL` sea correcta (debe incluir `https://` en producción)
 - Asegúrate de que la API esté accesible públicamente
-- Revisa la configuración de CORS
+- Revisa los logs del bot para ver errores de conexión
 
 ---
 

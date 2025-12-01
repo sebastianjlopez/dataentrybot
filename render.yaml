@@ -1,0 +1,54 @@
+services:
+  # API Service
+  - type: web
+    name: dataentrybot-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        fromService:
+          type: web
+          name: dataentrybot-api
+          property: port
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: dataentrybot-api
+          property: host
+      - key: BCRA_MOCK_MODE
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+
+  # Bot Service (Background Worker)
+  - type: worker
+    name: dataentrybot-bot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m src.app.bot
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: dataentrybot-api
+          property: host
+      - key: BCRA_MOCK_MODE
+        value: "true"
+      - key: LOG_LEVEL
+        value: INFO
+

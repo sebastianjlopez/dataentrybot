@@ -2,9 +2,8 @@
 FastAPI routes for the Data Entry Bot API.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
 import logging
-from src.app.core.models import ChequeData, DocumentData, ProcessRequest, ProcessResponse
+from src.app.core.models import ChequeData, DocumentData
 from src.app.services.cheques_processor import ChequesProcessor
 from src.app.services.gemini_client import GeminiClient
 from src.app.utils.file import get_file_mime_type
@@ -78,39 +77,6 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 
-@router.post("/process", response_model=ProcessResponse)
-async def process_data(request: ProcessRequest):
-    """
-    Process validated data from Mini App.
-    
-    This endpoint receives the edited/validated data from the Mini App
-    and performs the final processing (mock for now).
-    """
-    try:
-        logger.info(f"Processing data: tipo={request.tipo_documento}, usuario={request.usuario_id}")
-        
-        # Mock processing logic
-        # In production, this would:
-        # - Save to database
-        # - Send to external systems
-        # - Generate reports
-        # - etc.
-        
-        data_id = f"proc_{request.tipo_documento}_{request.usuario_id or 'unknown'}"
-        
-        logger.info(f"Data processed successfully: {data_id}")
-        
-        return ProcessResponse(
-            success=True,
-            message=f"Datos de {request.tipo_documento} procesados correctamente",
-            data_id=data_id
-        )
-        
-    except Exception as e:
-        logger.error(f"Error processing data: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
-
-
 @router.get("/health")
 async def health_check():
     """
@@ -121,26 +87,5 @@ async def health_check():
         "service": "data-entry-bot-api",
         "version": "1.0.0"
     }
-
-
-@router.get("/webapp")
-async def webapp():
-    """
-    Serve the Mini App HTML.
-    """
-    try:
-        from pathlib import Path
-        webapp_path = Path("webapp") / "index.html"
-        
-        if webapp_path.exists():
-            return FileResponse(webapp_path)
-        else:
-            return HTMLResponse(
-                content="<h1>Mini App not found</h1>",
-                status_code=404
-            )
-    except Exception as e:
-        logger.error(f"Error serving webapp: {str(e)}")
-        raise HTTPException(status_code=500, detail="Error serving webapp")
 
 
