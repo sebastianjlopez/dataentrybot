@@ -246,3 +246,4 @@ Para más información, contacta al administrador.
             await self.application.shutdown()
             logger.info("Telegram bot stopped")
 
+

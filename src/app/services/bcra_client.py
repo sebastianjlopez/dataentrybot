@@ -99,3 +99,4 @@ class BCRAClient:
         credit_status = await self.check_credit_status(cuit)
         return credit_status.get("cheques_rechazados", 0)
 
+

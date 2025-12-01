@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Create FastAPI app
 app = FastAPI(
     title="Data Entry Bot API",
-    description="API para automatización de data entry con Telegram Bot y Gemini Vision",
+    description="API para automatización de data entry con Telegram Bot y Gemini 2.5 LLM",
     version="1.0.0"
 )
 
@@ -64,4 +64,5 @@ async def startup_event():
 async def shutdown_event():
     """Shutdown event handler."""
     logger.info("Shutting down Data Entry Bot API...")
+
 

@@ -143,3 +143,4 @@ async def webapp():
         logger.error(f"Error serving webapp: {str(e)}")
         raise HTTPException(status_code=500, detail="Error serving webapp")
 
+

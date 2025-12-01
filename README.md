@@ -7,7 +7,7 @@
 ![Telegram](https://img.shields.io/badge/Telegram-Bot-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
-**Sistema profesional de automatización de Data Entry con Telegram Bot, Gemini Vision y validación BCRA**
+**Sistema profesional de automatización de Data Entry con Telegram Bot, Gemini 2.5 LLM y validación BCRA**
 
 [Características](#-características) • [Instalación](#-instalación) • [Uso](#-uso) • [Documentación](#-documentación) • [Contribuir](#-contribuir)
 
@@ -36,7 +36,7 @@
 
 ## 🎯 Descripción
 
-**Data Entry Bot** es un sistema completo de automatización de data entry diseñado para roles administrativos. Permite procesar documentos, leer cheques mediante OCR con Gemini Vision, validar información crediticia con la API del BCRA, y gestionar todo el flujo a través de un bot de Telegram con Mini App integrada.
+**Data Entry Bot** es un sistema completo de automatización de data entry diseñado para roles administrativos. Permite procesar documentos, leer cheques mediante razonamiento avanzado con Gemini 2.5 LLM, validar información crediticia con la API del BCRA, y gestionar todo el flujo a través de un bot de Telegram con Mini App integrada.
 
 ### Casos de Uso
 
@@ -56,10 +56,11 @@
 - Procesamiento automático de imágenes y PDFs
 - Integración con Mini App para edición de datos
 
-### 🔍 Procesamiento OCR
-- **Gemini Vision API** para extracción de texto
-- Detección automática de cheques
-- Extracción estructurada de campos específicos
+### 🔍 Procesamiento Inteligente con LLM
+- **Gemini 2.5 LLM** (Flash/Pro) con capacidades de razonamiento avanzado
+- Análisis estructural y contextual de documentos
+- Detección automática de cheques con razonamiento
+- Extracción estructurada de campos específicos con validación
 - Soporte para múltiples formatos (JPG, PNG, PDF)
 
 ### 💰 Procesamiento de Cheques
@@ -103,7 +104,7 @@
 - **python-telegram-bot** - Biblioteca para Telegram Bot API
 
 ### Servicios Externos
-- **Google Gemini Vision API** - Procesamiento de imágenes y OCR
+- **Google Gemini 2.5 LLM** - Procesamiento inteligente de imágenes con razonamiento avanzado (Flash/Pro)
 - **BCRA API** - Validación crediticia (con modo mock)
 
 ### Frontend
@@ -236,6 +237,7 @@ dataentrybot/
 |----------|-------------|-----------|---------|
 | `TELEGRAM_BOT_TOKEN` | Token del bot de Telegram | ✅ | - |
 | `GEMINI_API_KEY` | API Key de Google Gemini | ✅ | - |
+| `GEMINI_MODEL` | Modelo de Gemini a usar (gemini-2.5-flash o gemini-2.5-pro) | ❌ | `gemini-2.5-flash` |
 | `TELEGRAM_WEBAPP_URL` | URL de la Mini App | ✅ | `http://localhost:8000/webapp` |
 | `API_HOST` | Host del servidor API | ❌ | `0.0.0.0` |
 | `API_PORT` | Puerto del servidor API | ❌ | `8000` |
@@ -379,7 +381,7 @@ API /upload procesa
     ↓
 Detección de cheque
     ↓
-Gemini Vision extrae datos
+Gemini 2.5 LLM analiza y extrae datos con razonamiento
     ↓
 BCRA valida CUIT
     ↓
@@ -395,7 +397,7 @@ API /process guarda datos
 ### Componentes Principales
 
 - **`TelegramBot`**: Maneja interacciones con usuarios
-- **`GeminiClient`**: Procesa imágenes con Gemini Vision
+- **`GeminiClient`**: Procesa imágenes con Gemini 2.5 LLM usando razonamiento avanzado
 - **`BCRAClient`**: Valida información crediticia
 - **`ChequesProcessor`**: Orquesta el procesamiento de cheques
 - **`FastAPI Routes`**: Endpoints REST para procesamiento
