@@ -27,6 +27,8 @@ GEMINI_MODEL=gemini-2.5-flash
 API_HOST=0.0.0.0
 API_PORT=8000
 API_BASE_URL=http://localhost:8000
+WEBHOOK_URL=https://dataentrybot.onrender.com/api/webhook
+# URL completa del webhook de Telegram (solo necesario si quieres auto-configuración)
 
 # BCRA API
 BCRA_API_URL=https://api.bcra.gob.ar
@@ -69,7 +71,13 @@ GEMINI_MODEL=gemini-2.5-flash
 API_HOST=0.0.0.0
 API_PORT=8000
 API_BASE_URL=http://localhost:8000
+WEBHOOK_URL=https://dataentrybot.onrender.com/api/webhook
+# URL completa del webhook (solo necesario para auto-configuración en Render)
+
+# BCRA API
 BCRA_API_URL=https://api.bcra.gob.ar
+
+# Logging
 LOG_LEVEL=INFO
 
 # ============================================
@@ -99,9 +107,29 @@ AFIP_ENVIRONMENT=dev
 3. Obtén tu `token`, `sign` y `cuitRepresentada`
 4. Configúralos en las variables de entorno
 
+## 🌐 Variables para Render/Producción
+
+Para Render, configura estas variables en el panel de configuración:
+
+**Variables Requeridas:**
+- `TELEGRAM_BOT_TOKEN` - Tu token del bot
+- `GEMINI_API_KEY` - Tu API key de Gemini
+
+**Variables Recomendadas para Webhook:**
+- `WEBHOOK_URL` - URL completa del webhook (ej: `https://dataentrybot.onrender.com/api/webhook`)
+  - Si configuras esta variable, el webhook se configurará automáticamente al iniciar
+  - Si no la configuras, puedes configurar el webhook manualmente usando la API de Telegram
+
+**Variables Opcionales:**
+- `GEMINI_MODEL` - Modelo a usar (default: `gemini-2.5-flash`)
+- `BCRA_API_URL` - URL de la API BCRA (default: `https://api.bcra.gob.ar`)
+- `LOG_LEVEL` - Nivel de logging (default: `INFO`)
+- Variables de AFIP si usas el comando `/padron`
+
 ## ⚠️ Importante
 
 - **Nunca subas el archivo `.env` a Git** (ya está en `.gitignore`)
 - Usa `.env.example` como plantilla si es necesario
 - En producción (Render, etc.), configura las variables en el panel de configuración del servicio
+- **Para Render:** Configura `WEBHOOK_URL` con la URL completa de tu servicio (ej: `https://dataentrybot.onrender.com/api/webhook`)
 

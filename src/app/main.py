@@ -51,9 +51,20 @@ async def startup_event():
     logger.info("Starting Data Entry Bot API...")
     logger.info(f"API running on {settings.api_host}:{settings.api_port}")
     
-    # Bot will be initialized lazily when first webhook is received
-    if settings.telegram_bot_token:
-        logger.info("Telegram Bot token configured - webhook ready at /api/webhook")
+    # Configure webhook if URL is provided
+    if settings.telegram_bot_token and settings.webhook_url:
+        try:
+            import requests
+            webhook_api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/setWebhook"
+            response = requests.post(webhook_api_url, json={"url": settings.webhook_url}, timeout=10)
+            if response.json().get("ok"):
+                logger.info(f"✅ Webhook configurado: {settings.webhook_url}")
+            else:
+                logger.warning(f"⚠️  Error configurando webhook: {response.json()}")
+        except Exception as e:
+            logger.warning(f"⚠️  No se pudo configurar webhook automáticamente: {str(e)}")
+    elif settings.telegram_bot_token:
+        logger.info("Telegram Bot token configurado - webhook listo en /api/webhook (configurar WEBHOOK_URL para auto-configuración)")
 
 
 @app.on_event("shutdown")

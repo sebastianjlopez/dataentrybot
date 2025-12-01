@@ -37,6 +37,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Scripts con tokens (si los hay)
+scripts/check_webhook.py
+
 
 
 

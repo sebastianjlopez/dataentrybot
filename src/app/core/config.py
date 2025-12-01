@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_base_url: str = "http://localhost:8000"
+    webhook_url: str = ""  # URL completa del webhook (ej: https://dataentrybot.onrender.com/api/webhook)
     
     # BCRA API
     bcra_api_url: str = "https://api.bcra.gob.ar"
