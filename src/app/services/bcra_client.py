@@ -91,6 +91,9 @@ class BCRAClient:
         """
         Count rejected cheques from BCRA API response.
         
+        IMPORTANT: Only counts cheques that are NOT cancelled (fechaPago is null/empty).
+        This matches the behavior of the BCRA website which only shows active rejected cheques.
+        
         The API response structure is:
         {
             "status": 0,
@@ -104,7 +107,15 @@ class BCRAClient:
                             {
                                 "entidad": ...,
                                 "detalle": [
-                                    { ... cheque data ... },
+                                    {
+                                        "nroCheque": ...,
+                                        "fechaRechazo": "...",
+                                        "monto": ...,
+                                        "fechaPago": "..." or null,  // null = not cancelled
+                                        "fechaPagoMulta": "...",
+                                        "estadoMulta": "...",
+                                        ...
+                                    },
                                     ...
                                 ]
                             }
@@ -118,24 +129,43 @@ class BCRAClient:
             api_response: Response from BCRA API
             
         Returns:
-            Total count of rejected cheques
+            Total count of active (non-cancelled) rejected cheques
         """
         if not api_response or api_response.get("status") != 0:
+            logger.debug("API response has no status or status != 0")
             return 0
         
         results = api_response.get("results")
         if not results:
+            logger.debug("API response has no results")
             return 0
         
         causales = results.get("causales", [])
         total_count = 0
+        total_cheques = 0  # Total including cancelled
+        cancelled_count = 0  # Count of cancelled cheques
         
-        # Count cheques in all causales -> entidades -> detalle
+        # Count only active (non-cancelled) cheques
+        # A cheque is considered cancelled if fechaPago is not null/empty
         for causal in causales:
+            causal_name = causal.get("causal", "N/A")
             entidades = causal.get("entidades", [])
+            
             for entidad in entidades:
                 detalle = entidad.get("detalle", [])
-                total_count += len(detalle)
+                total_cheques += len(detalle)
+                
+                for cheque in detalle:
+                    fecha_pago = cheque.get("fechaPago")
+                    # Cheque is active (not cancelled) if fechaPago is null, empty, or None
+                    if not fecha_pago or fecha_pago == "":
+                        total_count += 1
+                    else:
+                        cancelled_count += 1
+                        logger.debug(f"Excluding cancelled cheque: fechaPago={fecha_pago}")
+        
+        if total_cheques > 0:
+            logger.info(f"Cheques rechazados: {total_count} activos, {cancelled_count} cancelados (total: {total_cheques})")
         
         return total_count
     
