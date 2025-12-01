@@ -1,0 +1,371 @@
+================================================================================
+RESUMEN DEL PROYECTO - DATAENTRYBOT
+================================================================================
+
+Este documento contiene el contexto, autenticaciones y pasos necesarios para
+gestionar el proyecto dataentrybot, especialmente para consultas a la API del BCRA
+y despliegues en Render.
+
+================================================================================
+CONTEXTO DEL PROYECTO
+================================================================================
+
+PROYECTO: DataEntryBot
+REPOSITORIO: https://github.com/sebastianjlopez/dataentrybot
+DESPLIEGUE: Render (https://dashboard.render.com)
+SERVICIO: dataentrybot (srv-d4mguva4d50c73el5fig)
+URL PRODUCCIÓN: https://dataentrybot.onrender.com
+
+DESCRIPCIÓN:
+- Bot de Telegram que procesa cheques mediante OCR (Gemini AI)
+- Consulta la API del BCRA para verificar cheques rechazados
+- API REST para procesar documentos
+- Desplegado en Render con auto-deploy desde GitHub
+
+================================================================================
+PROBLEMA RESUELTO - CONSULTA BCRA
+================================================================================
+
+PROBLEMA INICIAL:
+- El código usaba modo MOCK que generaba datos falsos basándose en el último
+  dígito del CUIT
+- Inconsistencias entre resultados de la página web del BCRA y la API
+- Ejemplos problemáticos:
+  * CUIT 30712215689: mostraba 3 cheques (modo mock) vs 0 en la web
+  * CUIT 30-69163759-6: mostraba 1 cheque vs 0 en la web
+
+SOLUCIÓN IMPLEMENTADA:
+1. Eliminado completamente el modo MOCK
+2. Implementada consulta a API oficial del BCRA:
+   URL: https://api.bcra.gob.ar/centraldedeudores/v1.0/Deudas/ChequesRechazados/{CUIT}
+3. Filtrado de cheques cancelados (solo cuenta cheques activos sin fechaPago)
+4. Logging detallado para depuración
+
+ARCHIVOS MODIFICADOS:
+- src/app/services/bcra_client.py (eliminado modo mock, implementada API real)
+- src/app/core/config.py (eliminada variable bcra_mock_mode)
+- render.yaml (eliminada variable BCRA_MOCK_MODE)
+
+COMMITS IMPORTANTES:
+- 568a8e5: ELIMINAR COMPLETAMENTE EL MODO MOCK
+- 9364ac0: Filtrar cheques cancelados en conteo
+- bb85d0e: Implementar API oficial del BCRA
+
+================================================================================
+AUTENTICACIONES Y CONFIGURACIÓN
+================================================================================
+
+GITHUB:
+- Repositorio: https://github.com/sebastianjlopez/dataentrybot
+- Branch principal: main
+- Auto-deploy activado en Render
+
+RENDER:
+- Dashboard: https://dashboard.render.com
+- Usuario: sebastian.j.lopez@savante.dev
+- Workspace: My Workspace
+- CLI instalada: render CLI v2.5.0
+- Autenticación: render login (ya autenticado)
+
+SERVICIOS EN RENDER:
+- Servicio API: dataentrybot (srv-d4mguva4d50c73el5fig)
+- Tipo: web_service
+- Plan: free
+- Región: oregon
+- Auto-deploy: activado (commit trigger)
+- URL: https://dataentrybot.onrender.com
+
+VARIABLES DE ENTORNO EN RENDER:
+- TELEGRAM_BOT_TOKEN (secreto)
+- GEMINI_API_KEY (secreto)
+- GEMINI_MODEL: gemini-2.5-flash
+- API_BASE_URL (generado automáticamente)
+- LOG_LEVEL: INFO
+- BCRA_MOCK_MODE: ELIMINADO (ya no existe)
+
+API DEL BCRA:
+- URL Base: https://api.bcra.gob.ar
+- Endpoint: /centraldedeudores/v1.0/Deudas/ChequesRechazados/{CUIT}
+- Autenticación: No requiere (API pública)
+- Formato CUIT: Sin guiones (ej: 30691637596)
+- Respuesta: JSON con estructura causales -> entidades -> detalle
+
+================================================================================
+COMANDOS GIT IMPORTANTES
+================================================================================
+
+# Ver estado del repositorio
+git status
+
+# Ver últimos commits
+git log --oneline -10
+
+# Agregar cambios
+git add <archivo>
+git add -A  # Todos los archivos
+
+# Hacer commit
+git commit -m "Mensaje descriptivo"
+
+# Push a GitHub
+git push origin main
+
+# Ver hash del último commit
+git log -1 --format=%H
+
+================================================================================
+COMANDOS RENDER CLI
+================================================================================
+
+# Verificar autenticación
+render whoami
+
+# Listar servicios
+render services list --output json
+
+# Ver información del servicio
+render services list
+
+# Crear un nuevo deploy
+render deploys create <serviceID> --commit <commit-hash> --wait --confirm
+Ejemplo:
+render deploys create srv-d4mguva4d50c73el5fig --commit 568a8e5 --wait --confirm
+
+# Listar deploys
+render deploys list <serviceID> --output json
+Ejemplo:
+render deploys list srv-d4mguva4d50c73el5fig --output json
+
+# Ver logs del servicio
+render logs <serviceID>
+Ejemplo:
+render logs srv-d4mguva4d50c73el5fig
+
+# Ver logs en tiempo real (tail)
+render logs srv-d4mguva4d50c73el5fig --follow
+
+# Restart del servicio
+render restart <serviceID>
+
+# Ver ayuda
+render --help
+render <comando> --help
+
+================================================================================
+PASOS PARA DESPLEGAR CAMBIOS
+================================================================================
+
+1. VERIFICAR CAMBIOS LOCALES:
+   git status
+   git diff
+
+2. HACER COMMIT:
+   git add <archivos modificados>
+   git commit -m "Descripción clara de los cambios"
+
+3. PUSH A GITHUB:
+   git push origin main
+
+4. OPCIONAL - DEPLOY MANUAL EN RENDER:
+   # Obtener hash del commit
+   git log -1 --format=%H
+   
+   # Crear deploy manual
+   render deploys create srv-d4mguva4d50c73el5fig --commit <hash> --wait --confirm
+
+5. VERIFICAR DEPLOY:
+   # Ver estado de deploys
+   render deploys list srv-d4mguva4d50c73el5fig --output json
+   
+   # Ver logs
+   render logs srv-d4mguva4d50c73el5fig
+
+6. MONITOREAR:
+   - Dashboard: https://dashboard.render.com/web/srv-d4mguva4d50c73el5fig
+   - Logs en tiempo real: render logs srv-d4mguva4d50c73el5fig --follow
+
+================================================================================
+ESTRUCTURA DEL PROYECTO
+================================================================================
+
+dataentrybot/
+├── src/
+│   └── app/
+│       ├── api/
+│       │   └── routes.py          # Endpoints REST
+│       ├── bot/
+│       │   └── bot.py             # Bot de Telegram
+│       ├── core/
+│       │   ├── config.py          # Configuración (SIN bcra_mock_mode)
+│       │   └── models.py         # Modelos Pydantic
+│       ├── services/
+│       │   ├── bcra_client.py     # Cliente BCRA (SIN modo mock)
+│       │   ├── cheques_processor.py
+│       │   └── gemini_client.py
+│       └── main.py                # FastAPI app
+├── render.yaml                    # Configuración Render (SIN BCRA_MOCK_MODE)
+├── requirements.txt
+└── README.md
+
+================================================================================
+LÓGICA DE CONSULTA BCRA
+================================================================================
+
+FLUJO:
+1. Usuario envía cheque con CUIT
+2. Se normaliza CUIT (quitar guiones): "30-69163759-6" -> "30691637596"
+3. Se llama a API: GET /centraldedeudores/v1.0/Deudas/ChequesRechazados/30691637596
+4. Se parsea respuesta JSON
+5. Se cuentan SOLO cheques activos (fechaPago es null o vacío)
+6. Se excluyen cheques cancelados del conteo
+7. Se retorna resultado
+
+ESTRUCTURA RESPUESTA API:
+{
+  "status": 0,
+  "results": {
+    "identificacion": ...,
+    "denominacion": ...,
+    "causales": [
+      {
+        "causal": "...",
+        "entidades": [
+          {
+            "entidad": ...,
+            "detalle": [
+              {
+                "nroCheque": ...,
+                "fechaRechazo": "...",
+                "monto": ...,
+                "fechaPago": "..." o null,  // null = no cancelado
+                ...
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+
+CONTEO:
+- Recorrer todas las causales
+- Para cada causal, recorrer todas las entidades
+- Para cada entidad, recorrer todos los cheques en detalle
+- Contar solo cheques donde fechaPago es null o vacío
+- Excluir cheques con fechaPago (cancelados)
+
+================================================================================
+LOGGING Y DEPURACIÓN
+================================================================================
+
+NIVELES DE LOG:
+- INFO: Operaciones normales, resultados de consultas
+- DEBUG: Detalles de respuestas API, cheques excluidos
+- ERROR: Errores de red, errores de API
+
+LOGS IMPORTANTES:
+- "BCRA client initialized - Using official BCRA API"
+- "Checking BCRA status for CUIT: {cuit}"
+- "BCRA API response for CUIT {cuit}: status={status}, has_results={bool}"
+- "Cheques rechazados: {activos} activos, {cancelados} cancelados (total: {total})"
+- "BCRA status for CUIT {cuit}: {count} cheques rechazados, riesgo {riesgo}"
+
+VER LOGS:
+- Render Dashboard: Sección Logs del servicio
+- CLI: render logs srv-d4mguva4d50c73el5fig
+- Tiempo real: render logs srv-d4mguva4d50c73el5fig --follow
+
+================================================================================
+CASOS DE PRUEBA CONOCIDOS
+================================================================================
+
+CUIT 30712215689 (30-71221568-9):
+- Último dígito: 9
+- Modo mock antiguo: 3 cheques rechazados (INCORRECTO)
+- API real: 0 cheques rechazados (CORRECTO - coincide con web)
+
+CUIT 30-69163759-6 (30691637596):
+- Último dígito: 6
+- Modo mock antiguo: 1 cheque rechazado (INCORRECTO)
+- API real: 0 cheques rechazados (si está cancelado) o el número correcto
+
+NOTA: El modo mock ya no existe. Siempre se usa la API real.
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+PROBLEMA: Deploy no se activa automáticamente
+SOLUCIÓN: 
+- Verificar que auto-deploy esté activado en Render
+- Verificar que el push a GitHub fue exitoso
+- Crear deploy manual: render deploys create srv-d4mguva4d50c73el5fig --commit <hash>
+
+PROBLEMA: Inconsistencias en conteo de cheques
+SOLUCIÓN:
+- Verificar logs: render logs srv-d4mguva4d50c73el5fig
+- Verificar que no haya modo mock activo (ya eliminado)
+- Verificar que se estén filtrando cheques cancelados correctamente
+- Revisar respuesta de API en logs
+
+PROBLEMA: Error de autenticación Render CLI
+SOLUCIÓN:
+- render login
+- Verificar: render whoami
+
+PROBLEMA: Error al hacer push a GitHub
+SOLUCIÓN:
+- Verificar conexión a internet
+- Verificar permisos del repositorio
+- git remote -v (verificar remoto configurado)
+
+================================================================================
+NOTAS IMPORTANTES
+================================================================================
+
+1. EL MODO MOCK ESTÁ COMPLETAMENTE ELIMINADO
+   - No existe bcra_mock_mode en config.py
+   - No existe BCRA_MOCK_MODE en render.yaml
+   - Siempre se usa la API oficial del BCRA
+
+2. FILTRADO DE CHEQUES CANCELADOS
+   - Solo se cuentan cheques con fechaPago null o vacío
+   - Cheques cancelados se excluyen del conteo
+   - Esto coincide con el comportamiento de la página web del BCRA
+
+3. LOGGING DETALLADO
+   - Todos los pasos de consulta se registran
+   - Facilita depuración de problemas
+   - Ver logs en Render Dashboard o CLI
+
+4. AUTO-DEPLOY ACTIVADO
+   - Cada push a main desencadena deploy automático
+   - No es necesario deploy manual (a menos que se quiera forzar)
+
+5. API DEL BCRA ES PÚBLICA
+   - No requiere API key
+   - No requiere autenticación
+   - Solo requiere CUIT normalizado (sin guiones)
+
+================================================================================
+CONTACTO Y RECURSOS
+================================================================================
+
+- Repositorio: https://github.com/sebastianjlopez/dataentrybot
+- Render Dashboard: https://dashboard.render.com
+- Servicio en Render: https://dashboard.render.com/web/srv-d4mguva4d50c73el5fig
+- URL Producción: https://dataentrybot.onrender.com
+- Documentación API BCRA: https://www.bcra.gob.ar/Catalogo/apis.asp?fileName=central-deudores-v1&sectionName=Central%20de%20Deudores
+
+================================================================================
+ÚLTIMA ACTUALIZACIÓN
+================================================================================
+
+Fecha: 2025-12-01
+Último commit: 568a8e5 (ELIMINAR COMPLETAMENTE EL MODO MOCK)
+Estado: Modo mock eliminado, usando API oficial del BCRA
+Deploy: Automático desde GitHub, manual disponible via CLI
+
+================================================================================
+
