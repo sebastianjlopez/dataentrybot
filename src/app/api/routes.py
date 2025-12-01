@@ -3,7 +3,10 @@ FastAPI routes for the Data Entry Bot API.
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException
 import logging
+import io
+import re
 from typing import Optional
+from telegram.constants import ParseMode
 from src.app.core.models import ChequeData, DocumentData
 from src.app.core.config import settings
 from src.app.services.cheques_processor import ChequesProcessor
@@ -348,7 +351,6 @@ async def _extract_cuit_from_image(gemini_client, image_data: bytes) -> Optional
         text = result.get("extracted_text", "").strip()
         
         # Try to find CUIT in response
-        import re
         cuit_pattern = r'\b\d{2}[-]?\d{8}[-]?\d{1}\b'
         match = re.search(cuit_pattern, text)
         
