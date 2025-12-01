@@ -38,22 +38,18 @@ class TelegramBot:
         if not self.token:
             raise ValueError("TELEGRAM_BOT_TOKEN not configured")
         
-        # For webhook mode, create Application without Updater to avoid initialization issues
+        # Always use ApplicationBuilder - it handles both webhook and polling modes
+        # The Updater is created lazily only when needed for polling
+        builder = Application.builder().token(self.token)
+        
         if webhook_mode:
-            from telegram import Bot
-            from telegram.ext import Application
+            # For webhook mode, provide an update_queue to avoid Updater initialization
             from asyncio import Queue
-            # Create bot and update queue manually for webhook mode
-            bot = Bot(token=self.token)
             update_queue = Queue()
-            # Create Application without Updater
-            self.application = Application(
-                bot=bot,
-                update_queue=update_queue
-            )
+            self.application = builder.update_queue(update_queue).build()
         else:
             # Normal mode with Updater for polling
-            self.application = Application.builder().token(self.token).build()
+            self.application = builder.build()
         
         self.cheques_processor = ChequesProcessor()
         self.afip_client = AFIPClient()
