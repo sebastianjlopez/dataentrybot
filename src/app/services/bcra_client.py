@@ -74,12 +74,23 @@ class BCRAClient:
                 async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
                     if response.status == 200:
                         data = await response.json()
-                        # La API puede retornar status 200 con diferentes formatos
-                        # Si ya tiene el formato esperado, retornarlo tal cual
-                        if isinstance(data, dict) and "status" in data:
-                            return data
-                        # Si no tiene el formato, envolverlo
-                        return {"status": 0, "results": data if isinstance(data, dict) else {}}
+                        # La API puede retornar status 200 (HTTP) con diferentes formatos JSON
+                        # Normalizar a formato esperado: {"status": 0, "results": {...}}
+                        if isinstance(data, dict):
+                            # Si ya tiene "status" y "results", retornarlo tal cual
+                            if "status" in data and "results" in data:
+                                # Si status es 200 (HTTP code), cambiarlo a 0 (success)
+                                if data.get("status") == 200:
+                                    data["status"] = 0
+                                return data
+                            # Si tiene "results" pero no "status", agregar status: 0
+                            elif "results" in data:
+                                return {"status": 0, "results": data["results"]}
+                            # Si es un dict sin estructura conocida, envolverlo
+                            else:
+                                return {"status": 0, "results": data}
+                        # Si no es dict, envolverlo
+                        return {"status": 0, "results": {}}
                     elif response.status == 404:
                         logger.warning(f"BCRA API: No data found for identificacion {identificacion}")
                         return {"status": 0, "results": {}}
@@ -168,6 +179,10 @@ class BCRAClient:
         deudas_data = await self.get_deudas(cuit)
         cheques_data = await self.get_cheques_rechazados(cuit)
         
+        # Log raw responses for debugging
+        logger.debug(f"BCRA deudas_data status: {deudas_data.get('status')}, has results: {'results' in deudas_data}")
+        logger.debug(f"BCRA cheques_data status: {cheques_data.get('status')}, has results: {'results' in cheques_data}")
+        
         # Initialize response
         response = {
             "estado_bcra": "",
@@ -194,23 +209,38 @@ class BCRAClient:
         tiene_deuda = False
         monto_total = 0.0
         situaciones = []
+        datos_disponibles = False
         
-        if deudas_data.get("status") == 0 and "results" in deudas_data:
-            results = deudas_data["results"]
-            if "periodos" in results:
-                for periodo in results["periodos"]:
-                    if "entidades" in periodo:
-                        for entidad in periodo["entidades"]:
-                            situacion = entidad.get("situacion", 0)
-                            monto = entidad.get("monto", 0.0)
-                            
-                            if situacion > 0:  # Situación > 0 indicates debt
-                                tiene_deuda = True
-                                monto_total += float(monto)
-                                situaciones.append(situacion)
+        # Check if we have valid data (status 0 or 200 both mean success)
+        status_code = deudas_data.get("status")
+        if status_code == 0 or status_code == 200:
+            if "results" in deudas_data:
+                results = deudas_data["results"]
+                # Check if results is not empty
+                if results and (results.get("periodos") or results.get("identificacion")):
+                    datos_disponibles = True
+                    if "periodos" in results and results["periodos"]:
+                        for periodo in results["periodos"]:
+                            if "entidades" in periodo:
+                                for entidad in periodo["entidades"]:
+                                    situacion = entidad.get("situacion", 0)
+                                    monto = entidad.get("monto", 0.0)
+                                    
+                                    if situacion > 0:  # Situación > 0 indicates debt
+                                        tiene_deuda = True
+                                        monto_total += float(monto)
+                                        situaciones.append(situacion)
+        
+        # If there was an error, log it
+        if deudas_data.get("status") == -1:
+            logger.warning(f"Error querying BCRA deudas: {deudas_data.get('error', 'Unknown error')}")
         
         # Determine credit status
-        if tiene_deuda:
+        if not datos_disponibles and deudas_data.get("status") != -1:
+            # No data available from API (empty response)
+            response["estado_bcra"] = "Sin datos disponibles en BCRA"
+            response["riesgo_crediticio"] = "N/A"
+        elif tiene_deuda:
             if monto_total > 0:
                 response["estado_bcra"] = f"Con deuda - Monto: ${monto_total:,.2f}"
             else:
@@ -225,6 +255,7 @@ class BCRAClient:
             else:
                 response["riesgo_crediticio"] = "B-"
         else:
+            # datos_disponibles is True but no debt found
             if cheques_rechazados > 0:
                 response["estado_bcra"] = f"Sin deuda actual, pero con {cheques_rechazados} cheque(s) rechazado(s)"
                 response["riesgo_crediticio"] = "B-"
@@ -236,7 +267,9 @@ class BCRAClient:
         response["detalles"] = {
             "monto_total": monto_total,
             "situaciones": situaciones,
-            "tiene_deuda_actual": tiene_deuda
+            "tiene_deuda_actual": tiene_deuda,
+            "datos_disponibles": datos_disponibles,
+            "error": deudas_data.get("error") if deudas_data.get("status") == -1 else None
         }
         
         logger.info(f"Credit status for {cuit}: {response['estado_bcra']}, Riesgo: {response['riesgo_crediticio']}")

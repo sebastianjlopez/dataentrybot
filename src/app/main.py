@@ -50,6 +50,10 @@ async def startup_event():
     """Startup event handler."""
     logger.info("Starting Data Entry Bot API...")
     logger.info(f"API running on {settings.api_host}:{settings.api_port}")
+    
+    # Bot will be initialized lazily when first webhook is received
+    if settings.telegram_bot_token:
+        logger.info("Telegram Bot token configured - webhook ready at /api/webhook")
 
 
 @app.on_event("shutdown")

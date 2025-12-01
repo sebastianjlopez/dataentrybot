@@ -322,13 +322,20 @@ class TelegramBot:
         
         return message
     
-    async def run(self):
+    async def run(self, use_webhook: bool = False, webhook_url: Optional[str] = None):
         """Start the bot."""
         logger.info("Starting Telegram Bot...")
         await self.application.initialize()
         await self.application.start()
-        await self.application.updater.start_polling()
-        logger.info("Telegram Bot is running")
+        
+        if use_webhook and webhook_url:
+            # Use webhook mode
+            await self.application.bot.set_webhook(url=webhook_url)
+            logger.info(f"Telegram Bot webhook set to: {webhook_url}")
+        else:
+            # Use polling mode
+            await self.application.updater.start_polling()
+            logger.info("Telegram Bot is running (polling mode)")
     
     async def stop(self):
         """Stop the bot."""

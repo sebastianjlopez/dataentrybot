@@ -89,3 +89,53 @@ async def health_check():
     }
 
 
+# Global bot instance for webhook (lazy initialization)
+_bot_instance = None
+_bot_lock = None
+
+async def get_bot_instance():
+    """Get or create bot instance for webhook (async)."""
+    global _bot_instance, _bot_lock
+    if _bot_instance is None:
+        from src.app.bot.bot import TelegramBot
+        import asyncio
+        
+        if _bot_lock is None:
+            _bot_lock = asyncio.Lock()
+        
+        async with _bot_lock:
+            if _bot_instance is None:
+                _bot_instance = TelegramBot()
+                await _bot_instance.application.initialize()
+                await _bot_instance.application.start()
+                logger.info("Bot instance initialized for webhook")
+    
+    return _bot_instance
+
+
+@router.post("/webhook")
+async def telegram_webhook(request: dict):
+    """
+    Webhook endpoint for Telegram Bot updates.
+    Telegram sends updates as JSON in the request body.
+    """
+    try:
+        from telegram import Update
+        
+        # Get bot instance (will initialize if needed)
+        bot = await get_bot_instance()
+        
+        # Process update
+        update_obj = Update.de_json(request, bot.application.bot)
+        if update_obj:
+            await bot.application.process_update(update_obj)
+        
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Error processing webhook: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        # Return 200 even on error to avoid Telegram retrying
+        return {"ok": False, "error": str(e)}
+
+
