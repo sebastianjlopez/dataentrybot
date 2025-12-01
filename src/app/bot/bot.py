@@ -27,13 +27,34 @@ logger = logging.getLogger(__name__)
 class TelegramBot:
     """Telegram Bot for Data Entry automation."""
     
-    def __init__(self):
-        """Initialize Telegram Bot."""
+    def __init__(self, webhook_mode: bool = False):
+        """
+        Initialize Telegram Bot.
+        
+        Args:
+            webhook_mode: If True, initializes for webhook mode (no Updater needed)
+        """
         self.token = settings.telegram_bot_token
         if not self.token:
             raise ValueError("TELEGRAM_BOT_TOKEN not configured")
         
-        self.application = Application.builder().token(self.token).build()
+        # For webhook mode, create Application without Updater to avoid initialization issues
+        if webhook_mode:
+            from telegram import Bot
+            from telegram.ext import Application
+            from asyncio import Queue
+            # Create bot and update queue manually for webhook mode
+            bot = Bot(token=self.token)
+            update_queue = Queue()
+            # Create Application without Updater
+            self.application = Application(
+                bot=bot,
+                update_queue=update_queue
+            )
+        else:
+            # Normal mode with Updater for polling
+            self.application = Application.builder().token(self.token).build()
+        
         self.cheques_processor = ChequesProcessor()
         self.afip_client = AFIPClient()
         self.gemini_client = GeminiClient()
@@ -41,7 +62,7 @@ class TelegramBot:
         # Register handlers
         self._register_handlers()
         
-        logger.info("Telegram Bot initialized")
+        logger.info(f"Telegram Bot initialized (webhook_mode={webhook_mode})")
     
     def _register_handlers(self):
         """Register all command and message handlers."""

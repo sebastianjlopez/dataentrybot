@@ -105,7 +105,8 @@ async def get_bot_instance():
         
         async with _bot_lock:
             if _bot_instance is None:
-                _bot_instance = TelegramBot()
+                # Initialize in webhook mode (no Updater needed)
+                _bot_instance = TelegramBot(webhook_mode=True)
                 await _bot_instance.application.initialize()
                 await _bot_instance.application.start()
                 logger.info("Bot instance initialized for webhook")
