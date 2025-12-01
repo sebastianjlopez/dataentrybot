@@ -1,249 +1,244 @@
 """
 Client for BCRA (Banco Central de la República Argentina) API.
-Handles credit checks and debt verification.
+Handles credit status checks, debt queries, and rejected cheques.
 """
 import logging
-from typing import Dict, Any, Optional
-import aiohttp
 import re
-# Removed settings import - no longer using mock mode
+from typing import Dict, Any, Optional, List
+import aiohttp
+from src.app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class BCRAClient:
-    """Client for BCRA API integration."""
+    """Client for BCRA Central de Deudores API."""
     
     def __init__(self):
-        """Initialize BCRA client."""
-        # BCRA API endpoint for rejected cheques
-        self.bcra_api_base = "https://api.bcra.gob.ar"
-        self.bcra_cheques_endpoint = "/centraldedeudores/v1.0/Deudas/ChequesRechazados"
-        logger.info("BCRA client initialized - Using official BCRA API")
+        """Initialize BCRA client with configuration."""
+        self.base_url = settings.bcra_api_url.rstrip('/')
+        logger.info(f"BCRA client initialized (base_url={self.base_url})")
     
-    def _normalize_cuit(self, cuit: str) -> str:
+    def _cuit_to_identificacion(self, cuit: str) -> Optional[int]:
         """
-        Normalize CUIT format: remove dashes and spaces, return as integer string.
+        Convert CUIT from format XX-XXXXXXXX-X to integer (just digits).
         
         Args:
-            cuit: CUIT in any format (XX-XXXXXXXX-X, XXXXXXXXXXX, etc.)
+            cuit: CUIT string in format XX-XXXXXXXX-X or just digits
             
         Returns:
-            CUIT as plain digits (XXXXXXXXXXX)
+            Integer identification or None if invalid
         """
-        # Remove dashes, spaces, and any non-digit characters
-        cuit_clean = re.sub(r'[^\d]', '', cuit)
-        return cuit_clean
+        if not cuit:
+            return None
+        
+        # Remove all non-digit characters
+        digits = re.sub(r'\D', '', cuit)
+        
+        if len(digits) == 11:
+            try:
+                return int(digits)
+            except ValueError:
+                return None
+        
+        return None
     
-    async def _call_bcra_api(self, cuit: str) -> Dict[str, Any]:
+    async def _make_request(
+        self, 
+        endpoint: str, 
+        identificacion: int
+    ) -> Dict[str, Any]:
         """
-        Call BCRA API to get rejected cheques data.
+        Make HTTP request to BCRA API.
         
         Args:
-            cuit: CUIT to check (format: XX-XXXXXXXX-X or XXXXXXXXXXX)
+            endpoint: API endpoint path
+            identificacion: Identification number (CUIT as integer)
             
         Returns:
-            Dictionary with API response data
+            Response data as dictionary
         """
-        # Normalize CUIT (remove dashes)
-        cuit_normalized = self._normalize_cuit(cuit)
-        
-        # Build API URL
-        url = f"{self.bcra_api_base}{self.bcra_cheques_endpoint}/{cuit_normalized}"
+        url = f"{self.base_url}{endpoint.format(Identificacion=identificacion)}"
         
         headers = {
-            'Accept': 'application/json',
-            'User-Agent': 'DataEntryBot/1.0'
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         }
         
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 404:
-                        # No records found
-                        logger.info(f"No rejected cheques found for CUIT {cuit}")
-                        return {
-                            "status": 0,
-                            "results": None
-                        }
-                    
-                    if response.status != 200:
-                        error_text = await response.text()
-                        logger.error(f"BCRA API returned status {response.status}: {error_text}")
-                        raise Exception(f"BCRA API error: HTTP {response.status}")
-                    
-                    # Parse JSON response
-                    data = await response.json()
-                    logger.debug(f"BCRA API response for CUIT {cuit}: status={data.get('status')}, has_results={bool(data.get('results'))}")
-                    if data.get("results"):
-                        logger.debug(f"Response structure: causales={len(data['results'].get('causales', []))}")
-                    return data
-                    
-        except aiohttp.ClientError as e:
-            logger.error(f"Network error calling BCRA API: {str(e)}")
-            raise Exception(f"Network error: {str(e)}")
-    
-    def _count_rejected_cheques(self, api_response: Dict[str, Any]) -> int:
-        """
-        Count rejected cheques from BCRA API response.
-        
-        IMPORTANT: Only counts cheques that are NOT cancelled (fechaPago is null/empty).
-        This matches the behavior of the BCRA website which only shows active rejected cheques.
-        
-        The API response structure is:
-        {
-            "status": 0,
-            "results": {
-                "identificacion": ...,
-                "denominacion": ...,
-                "causales": [
-                    {
-                        "causal": "...",
-                        "entidades": [
-                            {
-                                "entidad": ...,
-                                "detalle": [
-                                    {
-                                        "nroCheque": ...,
-                                        "fechaRechazo": "...",
-                                        "monto": ...,
-                                        "fechaPago": "..." or null,  // null = not cancelled
-                                        "fechaPagoMulta": "...",
-                                        "estadoMulta": "...",
-                                        ...
-                                    },
-                                    ...
-                                ]
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-        
-        Args:
-            api_response: Response from BCRA API
+            # Deshabilitar verificación SSL temporalmente para pruebas locales
+            ssl_context = False  # Deshabilita verificación SSL
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
             
-        Returns:
-            Total count of active (non-cancelled) rejected cheques
-        """
-        if not api_response or api_response.get("status") != 0:
-            logger.debug("API response has no status or status != 0")
-            return 0
-        
-        results = api_response.get("results")
-        if not results:
-            logger.debug("API response has no results")
-            return 0
-        
-        causales = results.get("causales", [])
-        total_count = 0
-        total_cheques = 0  # Total including cancelled
-        cancelled_count = 0  # Count of cancelled cheques
-        
-        # Count only active (non-cancelled) cheques
-        # A cheque is considered cancelled if fechaPago is not null/empty
-        for causal in causales:
-            causal_name = causal.get("causal", "N/A")
-            entidades = causal.get("entidades", [])
-            
-            for entidad in entidades:
-                detalle = entidad.get("detalle", [])
-                total_cheques += len(detalle)
-                
-                for cheque in detalle:
-                    fecha_pago = cheque.get("fechaPago")
-                    # Cheque is active (not cancelled) if fechaPago is null, empty, or None
-                    if not fecha_pago or fecha_pago == "":
-                        total_count += 1
+            async with aiohttp.ClientSession(connector=connector) as session:
+                async with session.get(url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        # La API puede retornar status 200 con diferentes formatos
+                        # Si ya tiene el formato esperado, retornarlo tal cual
+                        if isinstance(data, dict) and "status" in data:
+                            return data
+                        # Si no tiene el formato, envolverlo
+                        return {"status": 0, "results": data if isinstance(data, dict) else {}}
+                    elif response.status == 404:
+                        logger.warning(f"BCRA API: No data found for identificacion {identificacion}")
+                        return {"status": 0, "results": {}}
+                    elif response.status == 400:
+                        error_data = await response.json()
+                        logger.error(f"BCRA API Bad Request: {error_data}")
+                        return {"status": -1, "errorMessages": error_data.get("errorMessages", [])}
                     else:
-                        cancelled_count += 1
-                        logger.debug(f"Excluding cancelled cheque: fechaPago={fecha_pago}")
-        
-        if total_cheques > 0:
-            logger.info(f"Cheques rechazados: {total_count} activos, {cancelled_count} cancelados (total: {total_cheques})")
-        elif total_cheques == 0 and api_response.get("results"):
-            logger.info("No cheques found in API response (results exists but causales is empty)")
-        else:
-            logger.info("No cheques found - API returned no results")
-        
-        return total_count
+                        logger.error(f"BCRA API error: Status {response.status}")
+                        return {"status": -1, "error": f"HTTP {response.status}"}
+        except aiohttp.ClientError as e:
+            logger.error(f"BCRA API request error: {str(e)}")
+            return {"status": -1, "error": str(e)}
+        except Exception as e:
+            logger.error(f"Unexpected error in BCRA API request: {str(e)}")
+            return {"status": -1, "error": str(e)}
     
-    def _determine_risk_level(self, cheques_count: int) -> str:
+    async def get_deudas(self, cuit: str) -> Dict[str, Any]:
         """
-        Determine credit risk level based on rejected cheques count.
+        Get current debts for a CUIT.
         
         Args:
-            cheques_count: Number of rejected cheques
+            cuit: CUIT string in format XX-XXXXXXXX-X
             
         Returns:
-            Risk level (A, B, or C)
+            Dictionary with debt information
         """
-        if cheques_count == 0:
-            return "A"
-        elif cheques_count < 5:
-            return "B"
-        else:
-            return "C"
+        identificacion = self._cuit_to_identificacion(cuit)
+        if not identificacion:
+            return {"status": -1, "error": "Invalid CUIT format"}
+        
+        endpoint = "/centraldedeudores/v1.0/Deudas/{Identificacion}"
+        return await self._make_request(endpoint, identificacion)
+    
+    async def get_cheques_rechazados(self, cuit: str) -> Dict[str, Any]:
+        """
+        Get rejected cheques for a CUIT.
+        
+        Args:
+            cuit: CUIT string in format XX-XXXXXXXX-X
+            
+        Returns:
+            Dictionary with rejected cheques information
+        """
+        identificacion = self._cuit_to_identificacion(cuit)
+        if not identificacion:
+            return {"status": -1, "error": "Invalid CUIT format"}
+        
+        endpoint = "/centraldedeudores/v1.0/Deudas/ChequesRechazados/{Identificacion}"
+        return await self._make_request(endpoint, identificacion)
+    
+    async def get_deudas_historicas(self, cuit: str) -> Dict[str, Any]:
+        """
+        Get historical debts for a CUIT.
+        
+        Args:
+            cuit: CUIT string in format XX-XXXXXXXX-X
+            
+        Returns:
+            Dictionary with historical debt information
+        """
+        identificacion = self._cuit_to_identificacion(cuit)
+        if not identificacion:
+            return {"status": -1, "error": "Invalid CUIT format"}
+        
+        endpoint = "/centraldedeudores/v1.0/Deudas/Historicas/{Identificacion}"
+        return await self._make_request(endpoint, identificacion)
     
     async def check_credit_status(self, cuit: str) -> Dict[str, Any]:
         """
-        Check credit status for a given CUIT using the official BCRA API.
+        Check credit status for a CUIT by consolidating information from multiple endpoints.
         
         Args:
-            cuit: CUIT to check (format: XX-XXXXXXXX-X)
+            cuit: CUIT string in format XX-XXXXXXXX-X
             
         Returns:
-            Dictionary with credit status information
+            Dictionary with:
+            - estado_bcra: Credit status description
+            - cheques_rechazados: Number of rejected cheques
+            - riesgo_crediticio: Risk level (A, B, C, etc.)
+            - detalles: Additional details
         """
-        try:
-            logger.info(f"Checking BCRA status for CUIT: {cuit}")
-            # Call real BCRA API
-            api_response = await self._call_bcra_api(cuit)
-            cheques_count = self._count_rejected_cheques(api_response)
-            riesgo = self._determine_risk_level(cheques_count)
-            
-            # Determine status message
-            if cheques_count == 0:
-                estado = "Sin registros"
+        logger.info(f"Checking credit status for CUIT: {cuit}")
+        
+        # Get all relevant information
+        deudas_data = await self.get_deudas(cuit)
+        cheques_data = await self.get_cheques_rechazados(cuit)
+        
+        # Initialize response
+        response = {
+            "estado_bcra": "",
+            "cheques_rechazados": 0,
+            "riesgo_crediticio": "",
+            "detalles": {}
+        }
+        
+        # Process rejected cheques
+        cheques_rechazados = 0
+        if cheques_data.get("status") == 0 and "results" in cheques_data:
+            results = cheques_data["results"]
+            # Count all rejected cheques across all causales and entidades
+            if "causales" in results:
+                for causal in results["causales"]:
+                    if "entidades" in causal:
+                        for entidad in causal["entidades"]:
+                            if "detalle" in entidad:
+                                cheques_rechazados += len(entidad["detalle"])
+        
+        response["cheques_rechazados"] = cheques_rechazados
+        
+        # Process current debts
+        tiene_deuda = False
+        monto_total = 0.0
+        situaciones = []
+        
+        if deudas_data.get("status") == 0 and "results" in deudas_data:
+            results = deudas_data["results"]
+            if "periodos" in results:
+                for periodo in results["periodos"]:
+                    if "entidades" in periodo:
+                        for entidad in periodo["entidades"]:
+                            situacion = entidad.get("situacion", 0)
+                            monto = entidad.get("monto", 0.0)
+                            
+                            if situacion > 0:  # Situación > 0 indicates debt
+                                tiene_deuda = True
+                                monto_total += float(monto)
+                                situaciones.append(situacion)
+        
+        # Determine credit status
+        if tiene_deuda:
+            if monto_total > 0:
+                response["estado_bcra"] = f"Con deuda - Monto: ${monto_total:,.2f}"
             else:
-                estado = f"Con {cheques_count} cheque(s) rechazado(s)"
+                response["estado_bcra"] = "Con deuda registrada"
             
-            logger.info(f"BCRA status for CUIT {cuit}: {cheques_count} cheques rechazados, riesgo {riesgo}")
-            
-            return {
-                "estado_bcra": estado,
-                "cheques_rechazados": cheques_count,
-                "riesgo_crediticio": riesgo,
-                "cuit": cuit
-            }
-            
-        except Exception as e:
-            logger.error(f"Error checking BCRA credit status for CUIT {cuit}: {str(e)}")
-            return {
-                "estado_bcra": "Error",
-                "cheques_rechazados": 0,
-                "riesgo_crediticio": "N/A",
-                "error": str(e)
-            }
-    
-    async def check_rejected_cheques(self, cuit: str) -> int:
-        """
-        Check number of rejected cheques for a CUIT.
+            # Determine risk level based on situation codes and amount
+            max_situacion = max(situaciones) if situaciones else 0
+            if max_situacion >= 5 or monto_total > 1000000:
+                response["riesgo_crediticio"] = "C"
+            elif max_situacion >= 3 or monto_total > 500000:
+                response["riesgo_crediticio"] = "B"
+            else:
+                response["riesgo_crediticio"] = "B-"
+        else:
+            if cheques_rechazados > 0:
+                response["estado_bcra"] = f"Sin deuda actual, pero con {cheques_rechazados} cheque(s) rechazado(s)"
+                response["riesgo_crediticio"] = "B-"
+            else:
+                response["estado_bcra"] = "Sin deuda"
+                response["riesgo_crediticio"] = "A"
         
-        Args:
-            cuit: CUIT to check
-            
-        Returns:
-            Number of rejected cheques
-        """
-        credit_status = await self.check_credit_status(cuit)
-        return credit_status.get("cheques_rechazados", 0)
-
-
-
-
+        # Add details
+        response["detalles"] = {
+            "monto_total": monto_total,
+            "situaciones": situaciones,
+            "tiene_deuda_actual": tiene_deuda
+        }
+        
+        logger.info(f"Credit status for {cuit}: {response['estado_bcra']}, Riesgo: {response['riesgo_crediticio']}")
+        
+        return response

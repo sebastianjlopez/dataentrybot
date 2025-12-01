@@ -1,51 +1,42 @@
 """
-Configuration module for the Data Entry Bot application.
-Centralizes all environment variables and settings.
+Configuration settings using Pydantic Settings.
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
-    # Telegram Bot Configuration
-    telegram_bot_token: str
+    # Telegram Bot
+    telegram_bot_token: str = ""
     
-    # Gemini API Configuration
-    gemini_api_key: str
-    gemini_model: str = "gemini-2.5-flash"  # Options: gemini-2.5-flash, gemini-2.5-pro
+    # Gemini API
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
     
-    # FastAPI Configuration
+    # API Server
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     api_base_url: str = "http://localhost:8000"
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Auto-detect Docker environment and use service name
-        import os
-        if os.path.exists("/.dockerenv") or os.environ.get("DOCKER_CONTAINER"):
-            # We're in Docker, use service name for API
-            if self.api_base_url == "http://localhost:8000":
-                self.api_base_url = "http://api:8000"
+    # BCRA API
+    bcra_api_url: str = "https://api.bcra.gob.ar"
     
-    # BCRA API Configuration - Always uses official API
-    # No configuration needed - API is public
+    # AFIP API (Padrón A13)
+    afip_token: str = ""
+    afip_sign: str = ""
+    afip_cuit_representada: str = ""
+    afip_environment: str = "dev"  # "dev" or "prod"
     
     # Logging
     log_level: str = "INFO"
     
-    # File uploads
-    upload_dir: str = "uploads"
-    max_file_size: int = 10 * 1024 * 1024  # 10MB
-    
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignorar campos extra del .env que no están definidos
 
 
 # Global settings instance
 settings = Settings()
-
-
