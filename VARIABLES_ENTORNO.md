@@ -38,23 +38,6 @@ LOG_LEVEL=INFO
 # Opciones: DEBUG, INFO, WARNING, ERROR, CRITICAL
 ```
 
-## 🟢 Variables Opcionales para Funcionalidades Adicionales
-
-### AFIP Padrón A13 (Comando /padron)
-
-Para usar el comando `/padron` que consulta el padrón AFIP, necesitas estas credenciales:
-
-```env
-# AFIP SDK Credentials (obtenidas desde https://app.afipsdk.com/)
-AFIP_TOKEN=tu_token_afip_aqui
-AFIP_SIGN=tu_sign_afip_aqui
-AFIP_CUIT_REPRESENTADA=tu_cuit_representada_aqui
-AFIP_ENVIRONMENT=dev
-# Opciones: dev (desarrollo) o prod (producción)
-```
-
-**Nota:** Si no configuras estas variables, el comando `/padron` mostrará un mensaje de error indicando que las credenciales no están configuradas.
-
 ## 📝 Ejemplo de archivo .env completo
 
 ```env
@@ -79,14 +62,6 @@ BCRA_API_URL=https://api.bcra.gob.ar
 
 # Logging
 LOG_LEVEL=INFO
-
-# ============================================
-# AFIP (Opcional - para comando /padron)
-# ============================================
-AFIP_TOKEN=tu_token_afip
-AFIP_SIGN=tu_sign_afip
-AFIP_CUIT_REPRESENTADA=20-12345678-9
-AFIP_ENVIRONMENT=dev
 ```
 
 ## 🔍 Cómo obtener las credenciales
@@ -100,12 +75,6 @@ AFIP_ENVIRONMENT=dev
 1. Ve a [Google AI Studio](https://makersuite.google.com/app/apikey)
 2. Crea una nueva API key
 3. Copia la key generada
-
-### AFIP SDK Credentials
-1. Ve a [AFIP SDK](https://app.afipsdk.com/)
-2. Crea una cuenta o inicia sesión
-3. Obtén tu `token`, `sign` y `cuitRepresentada`
-4. Configúralos en las variables de entorno
 
 ## 🌐 Variables para Render/Producción
 
@@ -124,7 +93,6 @@ Para Render, configura estas variables en el panel de configuración:
 - `GEMINI_MODEL` - Modelo a usar (default: `gemini-2.5-flash`)
 - `BCRA_API_URL` - URL de la API BCRA (default: `https://api.bcra.gob.ar`)
 - `LOG_LEVEL` - Nivel de logging (default: `INFO`)
-- Variables de AFIP si usas el comando `/padron`
 
 ## ⚠️ Importante
 

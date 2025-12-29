@@ -104,8 +104,6 @@ async def get_bot_handlers():
     if _bot_handlers is None:
         from telegram import Bot
         from src.app.services.cheques_processor import ChequesProcessor
-        from src.app.services.afip_client import AFIPClient
-        from src.app.services.gemini_client import GeminiClient
         import asyncio
         
         if _bot_lock is None:
@@ -116,14 +114,10 @@ async def get_bot_handlers():
                 # Create bot and handlers directly without Application/Updater
                 bot = Bot(token=settings.telegram_bot_token)
                 cheques_processor = ChequesProcessor()
-                afip_client = AFIPClient()
-                gemini_client = GeminiClient()
                 
                 _bot_handlers = {
                     "bot": bot,
-                    "cheques_processor": cheques_processor,
-                    "afip_client": afip_client,
-                    "gemini_client": gemini_client
+                    "cheques_processor": cheques_processor
                 }
                 logger.info("Bot handlers initialized for webhook")
     
@@ -146,8 +140,6 @@ async def telegram_webhook(request: dict):
         handlers = await get_bot_handlers()
         bot = handlers["bot"]
         cheques_processor = handlers["cheques_processor"]
-        afip_client = handlers["afip_client"]
-        gemini_client = handlers["gemini_client"]
         
         # Parse update
         update_obj = Update.de_json(request, bot)
@@ -162,100 +154,84 @@ async def telegram_webhook(request: dict):
             # Handle commands
             if text.startswith("/start"):
                 welcome_message = (
-                    "🤖 *Bienvenido al Data Entry Bot*\n\n"
-                    "Puedo ayudarte con:\n"
-                    "• Procesar cheques y extraer datos\n"
-                    "• Consultar padrón AFIP A13\n"
-                    "• Validar información crediticia BCRA\n\n"
-                    "📋 *Comandos disponibles:*\n"
-                    "/start - Mostrar este mensaje\n"
-                    "/help - Ver ayuda detallada\n"
-                    "/padron <CUIT> - Consultar padrón AFIP\n\n"
-                    "💡 *Tipos de archivos soportados:*\n"
-                    "• Imágenes (JPG, PNG)\n"
-                    "• PDFs\n"
-                    "• Texto con CUIT\n\n"
-                    "Envía una foto o PDF para comenzar!"
+                    "👋 ¡Hola! Soy tu *Asistente de Cheques*\n\n"
+                    "✨ *¿Qué puedo hacer por ti?*\n"
+                    "📸 Tomo una foto de tu cheque y automáticamente:\n"
+                    "   ✓ Extraigo todos los datos (banco, importe, fechas, etc.)\n"
+                    "   ✓ Valido la información con BCRA\n"
+                    "   ✓ Te muestro todo organizado y fácil de leer\n\n"
+                    "🚀 *¿Cómo empezar?*\n"
+                    "Es súper fácil, solo sigue estos pasos:\n\n"
+                    "1️⃣ Toma una foto clara de tu cheque\n"
+                    "   (o envía un PDF si lo tienes digital)\n"
+                    "2️⃣ Envíamela aquí en el chat\n"
+                    "3️⃣ ¡Listo! Te mostraré toda la información\n\n"
+                    "📱 *Formatos que acepto:*\n"
+                    "• 📷 Fotos (JPG, PNG)\n"
+                    "• 📄 PDFs\n\n"
+                    "💡 *Tip:* Asegúrate de que la foto esté bien iluminada y se vea todo el cheque completo.\n\n"
+                    "¿Listo para probar? ¡Envía tu primer cheque! 📸"
                 )
                 await message.reply_text(welcome_message, parse_mode=ParseMode.MARKDOWN)
             
             elif text.startswith("/help"):
                 help_message = (
-                    "📖 *Ayuda - Data Entry Bot*\n\n"
-                    "🔹 *Comandos:*\n"
-                    "• `/start` - Mensaje de bienvenida\n"
-                    "• `/help` - Mostrar esta ayuda\n"
-                    "• `/padron <CUIT>` - Consultar padrón AFIP A13\n\n"
-                    "🔹 *Uso del Padrón:*\n"
-                    "• `/padron 30-69163759-6` - Consulta por CUIT\n"
-                    "• Envía una foto con CUIT visible\n"
-                    "• El bot extraerá el CUIT automáticamente\n\n"
-                    "🔹 *Procesamiento de Cheques:*\n"
-                    "• Envía una foto o PDF de un cheque\n"
-                    "• El bot extraerá todos los datos\n"
-                    "• Validará automáticamente con BCRA\n\n"
-                    "🔹 *Información del Padrón:*\n"
-                    "El bot mostrará:\n"
-                    "• Razón Social\n"
-                    "• Domicilio Fiscal\n"
-                    "• Provincia (alerta Convenio Multilateral)\n"
-                    "• Condición de IVA\n"
-                    "• Actividades"
+                    "📚 *Guía de Uso - Paso a Paso*\n\n"
+                    "🎯 *¿Qué necesitas hacer?*\n"
+                    "Solo enviarme una foto o PDF de un cheque y yo haré el resto.\n\n"
+                    "📝 *Instrucciones detalladas:*\n\n"
+                    "**Paso 1: Prepara tu cheque**\n"
+                    "• Asegúrate de que el cheque esté completo\n"
+                    "• Verifica que se vean todos los datos importantes\n"
+                    "• Si es una foto, que esté bien iluminada\n\n"
+                    "**Paso 2: Envíame la imagen**\n"
+                    "• Toca el ícono de 📎 (clip) en Telegram\n"
+                    "• Selecciona 'Foto' o 'Archivo'\n"
+                    "• Elige tu cheque y envíalo\n\n"
+                    "**Paso 3: Espera el resultado**\n"
+                    "• Te avisaré cuando esté procesando\n"
+                    "• En segundos tendrás toda la información\n"
+                    "• Verás datos del banco, importe, fechas, etc.\n\n"
+                    "📊 *¿Qué información obtendrás?*\n"
+                    "• 🏦 Banco emisor\n"
+                    "• 💰 Importe del cheque\n"
+                    "• 📅 Fechas (emisión y pago)\n"
+                    "• 🔢 Número de cheque\n"
+                    "• 🆔 CUIT del librador\n"
+                    "• 🏛️ Estado BCRA (si está disponible)\n"
+                    "• ⚠️ Alertas de riesgo crediticio\n\n"
+                    "❓ *¿Tienes problemas?*\n"
+                    "• Si no detecta el cheque, verifica que la imagen sea clara\n"
+                    "• Asegúrate de que el cheque esté completo en la foto\n"
+                    "• Intenta con mejor iluminación si es necesario\n\n"
+                    "💬 *Comandos disponibles:*\n"
+                    "• `/start` - Ver mensaje de bienvenida\n"
+                    "• `/help` - Ver esta ayuda\n\n"
+                    "¿Alguna otra duda? ¡Pregúntame! 😊"
                 )
                 await message.reply_text(help_message, parse_mode=ParseMode.MARKDOWN)
             
-            elif text.startswith("/padron"):
-                # Extract CUIT from command
-                parts = text.split()
-                if len(parts) > 1:
-                    cuit = " ".join(parts[1:])
-                    await _process_padron_query(bot, message, afip_client, cuit)
-                else:
-                    await message.reply_text(
-                        "❌ Por favor proporciona un CUIT.\n\n"
-                        "Ejemplo: `/padron 30-69163759-6`\n\n"
-                        "O envía una foto con el CUIT visible.",
-                        parse_mode=ParseMode.MARKDOWN
-                    )
-            
             elif message.photo or (message.document and message.document.mime_type and "image" in message.document.mime_type):
                 # Handle images
-                await _handle_image_webhook(bot, message, cheques_processor, afip_client, gemini_client)
+                await _handle_image_webhook(bot, message, cheques_processor)
             
             elif message.document and message.document.mime_type == "application/pdf":
                 # Handle PDFs
                 await _handle_document_webhook(bot, message, cheques_processor)
             
             elif text:
-                # Handle text (try to extract CUIT)
-                import re
-                cuit_pattern = r'\b\d{2}[-]?\d{8}[-]?\d{1}\b'
-                match = re.search(cuit_pattern, text)
-                if match:
-                    cuit = match.group(0)
-                    digits = re.sub(r'\D', '', cuit)
-                    if len(digits) == 11:
-                        cuit = f"{digits[:2]}-{digits[2:10]}-{digits[10]}"
-                        await message.reply_text(
-                            f"🔍 CUIT detectado: {cuit}\n\nConsultando padrón AFIP...",
-                            parse_mode=ParseMode.MARKDOWN
-                        )
-                        await _process_padron_query(bot, message, afip_client, cuit)
-                    else:
-                        await message.reply_text(
-                            "❌ CUIT inválido. Debe tener 11 dígitos.\n\n"
-                            "Ejemplo: `30-69163759-6`",
-                            parse_mode=ParseMode.MARKDOWN
-                        )
-                else:
-                    await message.reply_text(
-                        "💡 No se detectó un CUIT en el mensaje.\n\n"
-                        "Envía:\n"
-                        "• Un CUIT (ej: `30-69163759-6`)\n"
-                        "• Una foto con CUIT visible\n"
-                        "• O usa `/padron <CUIT>`",
-                        parse_mode=ParseMode.MARKDOWN
-                    )
+                # Handle text
+                await message.reply_text(
+                    "👋 ¡Hola!\n\n"
+                    "Para procesar un cheque, necesito que me envíes una *foto* o un *PDF* del cheque.\n\n"
+                    "📸 *¿Cómo hacerlo?*\n"
+                    "1. Toca el ícono de 📎 (clip) en la parte inferior\n"
+                    "2. Selecciona 'Foto' o 'Archivo'\n"
+                    "3. Elige tu cheque y envíalo\n\n"
+                    "💡 *Tip:* Asegúrate de que la foto esté clara y se vea todo el cheque completo.\n\n"
+                    "¿Necesitas más ayuda? Escribe `/help` para ver la guía completa. 😊",
+                    parse_mode=ParseMode.MARKDOWN
+                )
         
         return {"ok": True}
     except Exception as e:
@@ -266,22 +242,14 @@ async def telegram_webhook(request: dict):
         return {"ok": False, "error": str(e)}
 
 
-async def _process_padron_query(bot, message, afip_client, cuit: str):
-    """Process AFIP padrón query."""
-    try:
-        result = await afip_client.get_taxpayer_details(cuit)
-        formatted = afip_client.format_taxpayer_info(result)
-        await message.reply_text(formatted, parse_mode=ParseMode.MARKDOWN)
-    except Exception as e:
-        logger.error(f"Error querying AFIP padrón: {str(e)}")
-        await message.reply_text(f"❌ Error al consultar el padrón AFIP: {str(e)}")
-
-
-async def _handle_image_webhook(bot, message, cheques_processor, afip_client, gemini_client):
+async def _handle_image_webhook(bot, message, cheques_processor):
     """Handle image messages in webhook mode."""
     try:
         await message.reply_text(
-            "📸 Procesando imagen...\n\nBuscando CUIT y/o cheques...",
+            "📸 ¡Perfecto! Recibí tu imagen\n\n"
+            "🔍 Estoy analizando el documento...\n"
+            "⏳ Esto puede tardar unos segundos\n\n"
+            "Por favor espera, estoy trabajando en ello... 💪",
             parse_mode=ParseMode.MARKDOWN
         )
         
@@ -298,31 +266,33 @@ async def _handle_image_webhook(bot, message, cheques_processor, afip_client, ge
         await file.download_to_memory(image_data)
         image_bytes = image_data.getvalue()
         
-        # Try to extract CUIT first
-        cuit = await _extract_cuit_from_image(gemini_client, image_bytes)
-        
-        if cuit:
-            await message.reply_text(
-                f"✅ CUIT detectado: `{cuit}`\n\nConsultando padrón AFIP...",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            await _process_padron_query(bot, message, afip_client, cuit)
-        else:
-            # Try to process as cheque
-            await message.reply_text(
-                "🔍 No se detectó CUIT. Procesando como cheque...",
-                parse_mode=ParseMode.MARKDOWN
-            )
-            await _process_cheque_webhook(bot, message, cheques_processor, image_bytes, "image/jpeg")
+        # Process as cheque
+        await _process_cheque_webhook(bot, message, cheques_processor, image_bytes, "image/jpeg")
     except Exception as e:
         logger.error(f"Error processing image: {str(e)}")
-        await message.reply_text(f"❌ Error al procesar la imagen: {str(e)}")
+        await message.reply_text(
+            "😔 *Ups, algo salió mal*\n\n"
+            "No pude procesar tu imagen en este momento.\n\n"
+            "🔄 *¿Qué puedes hacer?*\n"
+            "• Intenta enviar la imagen nuevamente\n"
+            "• Verifica que la imagen no esté corrupta\n"
+            "• Si el problema persiste, intenta con otra foto\n\n"
+            "Si el error continúa, por favor contacta al soporte.\n\n"
+            "¡Lo siento por las molestias! 😊",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 
 async def _handle_document_webhook(bot, message, cheques_processor):
     """Handle PDF documents in webhook mode."""
     try:
-        await message.reply_text("📄 Procesando PDF...", parse_mode=ParseMode.MARKDOWN)
+        await message.reply_text(
+            "📄 ¡Excelente! Recibí tu PDF\n\n"
+            "🔍 Estoy analizando el documento...\n"
+            "⏳ Esto puede tardar unos segundos\n\n"
+            "Por favor espera, estoy trabajando en ello... 💪",
+            parse_mode=ParseMode.MARKDOWN
+        )
         
         file = await bot.get_file(message.document.file_id)
         
@@ -334,37 +304,17 @@ async def _handle_document_webhook(bot, message, cheques_processor):
         await _process_cheque_webhook(bot, message, cheques_processor, pdf_bytes, "application/pdf")
     except Exception as e:
         logger.error(f"Error processing document: {str(e)}")
-        await message.reply_text(f"❌ Error al procesar el documento: {str(e)}")
-
-
-async def _extract_cuit_from_image(gemini_client, image_data: bytes) -> Optional[str]:
-    """Extract CUIT from image using Gemini."""
-    try:
-        prompt = """
-        Extrae el CUIT de esta imagen. El CUIT tiene formato XX-XXXXXXXX-X (11 dígitos con guiones).
-        
-        Responde SOLO con el CUIT en formato XX-XXXXXXXX-X, sin texto adicional.
-        Si no encuentras un CUIT, responde solo con "NO".
-        """
-        
-        result = await gemini_client.process_image(image_data, "image/jpeg", prompt)
-        text = result.get("extracted_text", "").strip()
-        
-        # Try to find CUIT in response
-        cuit_pattern = r'\b\d{2}[-]?\d{8}[-]?\d{1}\b'
-        match = re.search(cuit_pattern, text)
-        
-        if match:
-            cuit = match.group(0)
-            # Normalize format
-            digits = re.sub(r'\D', '', cuit)
-            if len(digits) == 11:
-                return f"{digits[:2]}-{digits[2:10]}-{digits[10]}"
-        
-        return None
-    except Exception as e:
-        logger.error(f"Error extracting CUIT from image: {str(e)}")
-        return None
+        await message.reply_text(
+            "😔 *Ups, algo salió mal*\n\n"
+            "No pude procesar tu PDF en este momento.\n\n"
+            "🔄 *¿Qué puedes hacer?*\n"
+            "• Intenta enviar el PDF nuevamente\n"
+            "• Verifica que el archivo no esté corrupto\n"
+            "• Si el problema persiste, intenta convertir el PDF a imagen\n\n"
+            "Si el error continúa, por favor contacta al soporte.\n\n"
+            "¡Lo siento por las molestias! 😊",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 
 async def _process_cheque_webhook(bot, message, cheques_processor, file_data: bytes, mime_type: str):
@@ -374,8 +324,22 @@ async def _process_cheque_webhook(bot, message, cheques_processor, file_data: by
         
         if not cheques:
             await message.reply_text(
-                "❌ No se detectaron cheques en el documento.\n\n"
-                "Asegúrate de que la imagen sea clara y contenga un cheque válido."
+                "😔 *No pude encontrar un cheque en tu imagen*\n\n"
+                "🔍 *¿Qué puede estar pasando?*\n\n"
+                "**Posibles causas:**\n"
+                "• La imagen no es lo suficientemente clara\n"
+                "• El cheque no está completo en la foto\n"
+                "• La iluminación es muy baja o hay sombras\n"
+                "• El documento no es un cheque\n\n"
+                "💡 *Sugerencias para mejorar:*\n"
+                "1. Asegúrate de que el cheque esté completo en la foto\n"
+                "2. Toma la foto con buena iluminación\n"
+                "3. Evita sombras sobre el cheque\n"
+                "4. Verifica que la imagen no esté borrosa\n"
+                "5. Intenta acercarte un poco más al cheque\n\n"
+                "🔄 *¿Qué hacer ahora?*\n"
+                "Puedes intentar enviar otra foto con mejor calidad. ¡Estoy aquí para ayudarte! 😊",
+                parse_mode=ParseMode.MARKDOWN
             )
             return
         
@@ -385,25 +349,63 @@ async def _process_cheque_webhook(bot, message, cheques_processor, file_data: by
             await message.reply_text(message_text, parse_mode=ParseMode.MARKDOWN)
     except Exception as e:
         logger.error(f"Error processing cheque: {str(e)}")
-        await message.reply_text(f"❌ Error al procesar el cheque: {str(e)}")
+        await message.reply_text(
+            "😔 *Ups, algo salió mal*\n\n"
+            "Encontré un cheque pero no pude extraer toda la información.\n\n"
+            "🔄 *¿Qué puedes hacer?*\n"
+            "• Intenta enviar otra foto con mejor calidad\n"
+            "• Asegúrate de que el cheque esté completo y claro\n"
+            "• Verifica que la iluminación sea buena\n\n"
+            "Si el problema persiste, por favor contacta al soporte.\n\n"
+            "¡Lo siento por las molestias! 😊",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 
 def _format_cheque_message(cheque, index: int, total: int) -> str:
     """Format cheque data as message."""
-    message = f"📋 *CHEQUE {index}/{total}*\n\n"
-    message += f"🏦 *Banco:* {cheque.banco or 'N/A'}\n"
+    message = "✅ *¡Listo! Aquí está la información de tu cheque*\n\n"
+    
+    if total > 1:
+        message += f"📋 *Cheque {index} de {total}*\n\n"
+    
+    message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    message += "📊 *INFORMACIÓN DEL CHEQUE*\n"
+    message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    message += f"🏦 *Banco:* {cheque.banco or 'No disponible'}\n"
     message += f"💰 *Importe:* ${cheque.importe:,.2f}\n"
-    message += f"📅 *Fecha Emisión:* {cheque.fecha_emision or 'N/A'}\n"
-    message += f"📅 *Fecha Pago:* {cheque.fecha_pago or 'N/A'}\n"
-    message += f"🔢 *Número:* {cheque.numero_cheque or 'N/A'}\n"
-    message += f"🆔 *CUIT Librador:* {cheque.cuit_librador or 'N/A'}\n\n"
+    message += f"📅 *Fecha de Emisión:* {cheque.fecha_emision or 'No disponible'}\n"
+    message += f"📅 *Fecha de Pago:* {cheque.fecha_pago or 'No disponible'}\n"
+    message += f"🔢 *Número de Cheque:* {cheque.numero_cheque or 'No disponible'}\n"
+    message += f"🆔 *CUIT del Librador:* {cheque.cuit_librador or 'No disponible'}\n\n"
+    
+    # BCRA Information section
+    has_bcra_info = False
+    bcra_section = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    bcra_section += "🏛️ *VALIDACIÓN BCRA*\n"
+    bcra_section += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
     if cheque.estado_bcra:
-        message += f"🏛️ *Estado BCRA:* {cheque.estado_bcra}\n"
+        bcra_section += f"✅ *Estado:* {cheque.estado_bcra}\n"
+        has_bcra_info = True
+    
     if cheque.cheques_rechazados > 0:
-        message += f"⚠️ *Cheques Rechazados:* {cheque.cheques_rechazados}\n"
+        bcra_section += f"⚠️ *Cheques Rechazados:* {cheque.cheques_rechazados}\n"
+        has_bcra_info = True
+    
     if cheque.riesgo_crediticio:
-        message += f"📊 *Riesgo Crediticio:* {cheque.riesgo_crediticio}\n"
+        bcra_section += f"📊 *Riesgo Crediticio:* {cheque.riesgo_crediticio}\n"
+        has_bcra_info = True
+    
+    if has_bcra_info:
+        message += bcra_section
+    else:
+        message += "ℹ️ *Nota:* No se pudo obtener información adicional del BCRA en este momento.\n\n"
+    
+    message += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    message += "✨ *Procesamiento completado*\n\n"
+    message += "¿Necesitas procesar otro cheque? ¡Solo envíame otra foto! 📸"
     
     return message
 
